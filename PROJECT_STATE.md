@@ -4,7 +4,7 @@ Updated: 2026-08-23
 
 ## Current phase
 
-Phase 2 — research infrastructure and intelligence primitives; persistence and ML are not yet active.
+Phase 4 — predictive research scaffolding; the ML layer is deterministic and tested on synthetic inputs, but no production model is active.
 
 ## Architecture
 
@@ -29,6 +29,9 @@ Phase 2 — research infrastructure and intelligence primitives; persistence and
 - `src/persistence.ts`: durable JSONL/JSON repositories for events, experiments and closed trades.
 - `src/feature-registry.ts`: versioned metadata for implemented baseline features.
 - `src/conditional.ts`: performance grouping by regime/pattern/model labels.
+- `src/ml.ts`: train-only standardization, logistic baseline, classification/calibration metrics and simple OOD diagnostics.
+- `src/analogues.ts`: nearest historical analogue summaries with sample-size/evidence labels.
+- `src/evidence.ts`: transparent evidence-quality scoring for research claims.
 - `src/backtest.ts`: deterministic replay using the same engine and broker interfaces.
 - `extension/`: lightweight MV3 display-only demo popup/overlay. It does not scrape TradingView or submit orders.
 
@@ -52,6 +55,7 @@ Phase 2 — research infrastructure and intelligence primitives; persistence and
 - Removed the invented strategy confidence value.
 - Added reproducible TypeScript tooling declarations.
 - Added project-state and phased roadmap documentation.
+- Added leakage-safe ML dataset preparation, a dependency-free logistic baseline, calibration bins, OOD checks, historical analogue summaries and evidence-quality scoring.
 
 ## Known limitations
 
@@ -59,7 +63,8 @@ Phase 2 — research infrastructure and intelligence primitives; persistence and
 - SQLite/IndexedDB persistence and a full UI/API contract remain future work; the current durable store is a deliberately dependency-light JSONL/JSON implementation.
 - Stop orders, cancellation, richer partial-fill queue models and shorting/leverage are not implemented.
 - Backtest replay requires normalized bar+quote events and now exposes snapshots, closed trades and metrics; durable persistence remains planned.
-- No ML model is active; this is intentional until the research/backtest foundation is independently validated.
+- The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset, persisted in a model registry, drift-monitored or promoted for paper-forward use.
+- Calibration and OOD checks are diagnostic utilities, not guarantees of probability accuracy or regime stability.
 - Market structure, pattern, regime, event and experiment modules are initial primitives, not a complete platform.
 - TypeScript tests require `npm install` before `npm run typecheck` or `npm test`.
 

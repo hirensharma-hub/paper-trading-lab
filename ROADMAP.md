@@ -33,14 +33,15 @@
 
 ## Phase 4 — Predictive research
 
-- [ ] Point-in-time prediction targets and leakage tests beyond the baseline
-- [ ] Logistic regression baseline, calibration and model metadata
-- [ ] Historical analogues and evidence-quality scoring
+- [x] Point-in-time prediction targets and leakage tests beyond the baseline
+- [x] Logistic regression baseline, calibration and model metadata
+- [x] Historical analogues and evidence-quality scoring
+- [ ] Real licensed dataset training, persisted model registry and promotion metadata
 
 ## Phase 5 — Robustness and controlled learning
 
 - [ ] Walk-forward model comparison, cost/parameter sensitivity and resampling
-- [ ] Experience records, drift/OOD monitoring and candidate model promotion
+- [ ] Experience records, production drift/OOD monitoring and candidate model promotion
 
 ## Phase 6 — Local paper-live workflow
 

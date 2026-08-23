@@ -24,5 +24,9 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | Durable persistence | Reproducibility research | JSONL/JSON restart-safe event, experiment and trade repositories | PARTIAL |
 | Feature registry | Reproducibility research | Versioned metadata for baseline features | IMPLEMENTED |
 | Regime/pattern reporting | Conditional analysis | Grouped trade metrics by labels | PARTIAL |
-| Machine learning | ML research | Targets/splits only; no active trained model yet | PLANNED |
+| ML dataset/scaler | Leakage-safe prediction research | Train-only standardization and split-preserving prepared rows | PARTIAL |
+| Logistic baseline | Supervised classification | Dependency-free binary logistic regression with metadata and metrics | PARTIAL |
+| Calibration/OOD | Model diagnostics | Reliability bins, log loss/Brier metrics and simple z-score OOD checks | IMPLEMENTED |
+| Historical analogues | Non-parametric context | Nearest-neighbour forward-return/regime/MFE/MAE summary with sample-size evidence | IMPLEMENTED |
+| Evidence quality | Research governance | Transparent weighted score across sample size, OOS, calibration, costs and stability | IMPLEMENTED |
 | Trading Mastery | Structured reference | Initial linked entries; broad topic expansion remains | PARTIAL |

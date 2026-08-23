@@ -28,7 +28,7 @@ npm test
 
 The test suite is intentionally focused on correctness: known indicator values, invalid data, cash and quote-size constraints, limit semantics, risk gates, fee reconciliation, purged target timing, metrics and multi-symbol accounting.
 
-The research core also exposes provider-independent file/in-memory market-data interfaces, a CSV OHLCV importer with a quality report, a timezone-aware regular-session calendar, and a small linked Trading Mastery knowledge base.
+The research core also exposes provider-independent file/in-memory market-data interfaces, a CSV OHLCV importer with a quality report, a timezone-aware regular-session calendar, a small linked Trading Mastery knowledge base, and a deterministic predictive-research baseline. The ML utilities fit preprocessing only on training rows and provide a simple logistic classifier, calibration/OOD diagnostics, historical analogues and evidence scoring; they require a real licensed dataset and further validation before any paper-forward use.
 
 Replay reconstructs closed trades from broker fills and reports equity snapshots, fees, net P/L, holding periods and MFE/MAE. Research utilities include triple-barrier targets, purged/walk-forward splits, descriptive statistics and expected value.
 

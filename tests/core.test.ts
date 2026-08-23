@@ -23,6 +23,9 @@ import { join } from "node:path";
 import { JsonExperimentRepository, JsonlEventRepository, JsonlTradeRepository } from "../src/persistence";
 import { featureRegistry, getFeatureMetadata } from "../src/feature-registry";
 import { performanceByLabel } from "../src/conditional";
+import { StandardScaler, LogisticRegression, prepareDataset, classificationMetrics, calibrationBins, fitOodProfile, assessOod } from "../src/ml";
+import { nearestAnalogues } from "../src/analogues";
+import { assessEvidence } from "../src/evidence";
 
 const bar = (symbol: string, i: number, close = 100 + i) => ({ symbol, startMs: i * 60_000, intervalMs: 60_000, open: close, high: close + 1, low: close - 1, close, volume: 100 + i });
 const order = (id: string, side: "BUY" | "SELL" = "BUY", quantity = 10, limitPrice?: number) => ({ id, symbol: "SPY", side, type: limitPrice === undefined ? "MARKET" as const : "LIMIT" as const, quantity, limitPrice, status: "NEW" as const, strategyId: "test", strategyVersion: "1", reason: "unit test", fills: [] });
@@ -221,4 +224,30 @@ test("feature registry and conditional performance expose reproducible metadata"
   const grouped = performanceByLabel(trades, (trade) => trade.entryRegime);
   assert.deepEqual(grouped.map((group) => group.label), ["RANGE", "UPTREND"]);
   assert.equal(grouped.every((group) => group.sampleCount === 1), true);
+});
+
+test("ML baseline fits only training data and reports calibrated/OOD diagnostics", () => {
+  const rows = [-2, -1, 1, 2, 0.5, -0.5].map((value, index) => ({ symbol: "SPY", decisionTimestamp: index, features: [value], label: value > 0 ? 1 as const : 0 as const, split: index < 4 ? "TRAIN" as const : index === 4 ? "VALIDATION" as const : "TEST" as const }));
+  const prepared = prepareDataset(rows);
+  assert.equal(prepared.scaler.fittedRows, 4);
+  assert.ok(Math.abs(prepared.validation[0].features[0]) > 0);
+  const model = new LogisticRegression().fit(prepared.train, { epochs: 800, learningRate: 0.2, l2: 0 });
+  const probabilities = prepared.train.map((row) => model.predictProbability(row.features));
+  const metrics = classificationMetrics(prepared.train.map((row) => row.label), probabilities);
+  assert.ok(metrics.logLoss < 0.4);
+  assert.ok(calibrationBins([0, 1, 1, 0], [0.1, 0.8, 0.7, 0.2]).some((bin) => bin.count > 0));
+  const profile = fitOodProfile(prepared.train.map((row) => row.features));
+  assert.equal(assessOod(prepared.train[0].features, profile).status, "IN_DISTRIBUTION");
+  assert.equal(assessOod([10], profile).status, "OUT_OF_DISTRIBUTION");
+  assert.ok(model.metadata().weights.length === 1);
+});
+
+test("historical analogues and evidence quality expose sample size instead of fake certainty", () => {
+  const observations = Array.from({ length: 25 }, (_, index) => ({ features: [index / 10], forwardReturn: index % 2 ? 0.02 : -0.01, regime: index % 2 ? "UPTREND" : "RANGE", mfe: 0.03, mae: -0.02 }));
+  const result = nearestAnalogues([1.2], observations, 20, 10);
+  assert.equal(result.sampleSize, 20);
+  assert.equal(result.evidence, "SUFFICIENT");
+  assert.ok(result.regimeDistribution.UPTREND > 0);
+  assert.equal(assessEvidence({ sampleSize: 3, outOfSample: true, calibrated: true, costSurvives: true, regimeConsistent: true, parameterStable: true, recentStable: true }).quality, "INSUFFICIENT");
+  assert.ok(assessEvidence({ sampleSize: 100, outOfSample: true, calibrated: true, costSurvives: true, regimeConsistent: true, parameterStable: true, recentStable: true }).score > 0.9);
 });
