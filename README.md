@@ -21,9 +21,12 @@ V1 foundation for a quantitative research and paper-trading platform. The tradin
 From this directory:
 
 ```bash
+npm install
 npm run typecheck
 npm test
 ```
+
+The test suite is intentionally focused on correctness: known indicator values, invalid data, cash and quote-size constraints, limit semantics, risk gates, metrics, target timing and multi-symbol accounting.
 
 ## Try the Chrome extension
 
@@ -34,15 +37,7 @@ npm test
 
 This is an intentionally safe demo UI. It does not consume TradingView prices, submit orders, or represent live performance. The next integration step is connecting the overlay to the separately running local TypeScript engine API.
 
-The current root repository has unrelated work and an origin for a different application. Keep this directory isolated until a dedicated GitHub repository URL is supplied. Recommended next step:
-
-```bash
-git init
-git add .
-git commit -m "Build paper trading research foundation"
-git remote add origin <dedicated-github-repository-url>
-git push -u origin main
-```
+See [PROJECT_STATE.md](PROJECT_STATE.md) for the current implementation boundary and [ROADMAP.md](ROADMAP.md) for planned research phases.
 
 ## Research discipline
 

@@ -23,6 +23,8 @@ export interface Quote {
   last?: number;
 }
 
+export interface MarketMark { symbol: string; price: number; ts: number; }
+
 export interface DataEntitlement {
   dataset: string;
   use: "display" | "non-display-internal";
@@ -49,7 +51,7 @@ export interface FeatureVector {
 
 export type Signal =
   | { action: "HOLD"; reason: string }
-  | { action: "ENTER_LONG"; stopPrice?: number; confidence?: number; reason: string }
+  | { action: "ENTER_LONG"; stopPrice?: number; reason: string }
   | { action: "EXIT"; reason: string };
 
 export interface Position {
@@ -92,4 +94,16 @@ export interface OrderIntent {
   strategyId: string;
   strategyVersion: string;
   reason: string;
+  submittedAt: number;
+}
+
+export interface PortfolioSnapshot {
+  ts: number;
+  cash: number;
+  equity: number;
+  marks: Readonly<Record<string, number>>;
+  grossExposure: number;
+  drawdown: number;
+  dayStartEquity: number;
+  highWaterMark: number;
 }

@@ -7,6 +7,11 @@ const std = (values: readonly number[]) => {
   return Math.sqrt(mean(values.map((v) => (v - m) ** 2)));
 };
 
+export interface FeatureConfig {
+  sessionsPerYear?: number;
+  sessionMinutesPerDay?: number;
+}
+
 export function ema(values: readonly number[], period: number): number {
   if (values.length < period) return Number.NaN;
   const alpha = 2 / (period + 1);
@@ -30,7 +35,8 @@ export function rsi(values: readonly number[], period = 14): number {
   return 100 - 100 / (1 + averageGain / averageLoss);
 }
 
-export function buildFeatures(bars: readonly Bar[], quote?: Quote): FeatureVector | null {
+export function buildFeatures(bars: readonly Bar[], quote?: Quote, config: FeatureConfig = {}): FeatureVector | null {
+  if (bars.some((bar) => bar.symbol !== bars[0].symbol)) throw new Error("Feature history must contain one symbol");
   if (bars.length < 20) return null;
   const closes = bars.map((bar) => bar.close);
   const volumes = bars.slice(-20).map((bar) => bar.volume);
@@ -41,6 +47,10 @@ export function buildFeatures(bars: readonly Bar[], quote?: Quote): FeatureVecto
   const recentReturns = returns.slice(-20);
   const volumeMean = mean(volumes);
   const volumeStd = std(volumes);
+  const sessionMinutes = config.sessionMinutesPerDay ?? 390;
+  const sessionsPerYear = config.sessionsPerYear ?? 252;
+  const intervalMinutes = bars.at(-1)!.intervalMs / 60_000;
+  const annualisedPeriods = intervalMinutes > 0 ? sessionsPerYear * (sessionMinutes / intervalMinutes) : Number.NaN;
   return {
     ts: bars.at(-1)!.startMs + bars.at(-1)!.intervalMs,
     symbol: bars.at(-1)!.symbol,
@@ -52,7 +62,7 @@ export function buildFeatures(bars: readonly Bar[], quote?: Quote): FeatureVecto
     emaFastDistance: (close - fast) / close,
     emaSlowDistance: (close - slow) / close,
     rsi14: rsi(closes),
-    realisedVol20: std(recentReturns) * Math.sqrt(252 * 390),
+    realisedVol20: std(recentReturns) * Math.sqrt(annualisedPeriods),
     volumeZ: volumeStd === 0 ? 0 : (volumes.at(-1)! - volumeMean) / volumeStd,
     spreadBps: quote ? ((quote.ask - quote.bid) / ((quote.ask + quote.bid) / 2)) * 10_000 : undefined,
     bookImbalance: quote?.bidSize !== undefined && quote.askSize !== undefined

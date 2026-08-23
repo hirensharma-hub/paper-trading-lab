@@ -22,7 +22,7 @@ export class EmaCrossStrategy implements Strategy {
       return { action: "HOLD", reason: "Insufficient feature history" };
     }
     if (!position && features.emaFast > features.emaSlow && features.rsi14 < 75) {
-      return { action: "ENTER_LONG", confidence: 0.5, reason: "Fast EMA above slow EMA with non-extreme RSI" };
+      return { action: "ENTER_LONG", reason: "Fast EMA above slow EMA with non-extreme RSI" };
     }
     if (position && features.emaFast < features.emaSlow) {
       return { action: "EXIT", reason: "Fast EMA crossed below slow EMA" };
