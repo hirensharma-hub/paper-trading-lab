@@ -16,6 +16,7 @@
 ## Phase 2 — Historical research
 
 - [x] Provider-independent historical-data interfaces and CSV quality reports
+- [x] CSV-file historical provider adapter
 - [ ] JSON/fixture provider parity and corporate-action metadata
 - [ ] SQLite ledger and reproducible experiment metadata
 - [x] Typed in-memory event, experiment and hypothesis repositories
@@ -52,7 +53,8 @@
 
 ## Phase 6 — Local paper-live workflow
 
-- [ ] Local engine HTTP API and safe extension protocol
+- [x] Local engine HTTP API and safe extension protocol
+- [x] Stale-data halt, health endpoint, pause and kill-switch controls
 - [ ] Permitted licensed market-data adapter
 - [ ] Paper-forward monitoring and dashboard expansion
 

@@ -19,6 +19,8 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - `src/metrics.ts`: return, volatility, Sharpe/Sortino-style ratios, drawdown, expectancy, win rate and profit factor.
 - `src/research.ts`: forward-return targets and chronological train/validation/test splits.
 - `src/market-data.ts`: provider interfaces, in-memory provider, CSV OHLCV parser and quality report.
+- `src/local-service.ts`: localhost-only HTTP protocol for paper engine health, state, market events and safe controls.
+- `src/service-main.ts`: runnable paper-only local engine process using the deterministic EMA strategy.
 - `src/knowledge/index.ts`: paraphrased, linked Trading Mastery reference entries.
 - `src/structure.ts`: deterministic swing, range and higher-high/lower-low structure.
 - `src/regime.ts`: rule-based trend and volatility regime classifier.
@@ -67,16 +69,18 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - Added time-safe analogue filtering, optional train-fitted feature scaling, regime-matched analogue evidence and decision-time timestamps.
 - Made prediction resolution target-consistent with the forward-close target, added a prediction queue, target registry and preprocessing-aware logistic model artifact bundle.
 - Added durable JSONL repositories for pending predictions, resolved experience records and model artifacts, plus an explicit decision policy and promotion report.
+- Added stale-quote protection, operational health state, explicit pause versus kill-switch controls and a localhost paper-engine HTTP service.
+- Added CSV-file historical provider support and connected the extension to the local service when available, with an offline demo fallback.
 
 ## Known limitations
 
-- No licensed market-data adapter or local HTTP engine service exists yet; the current provider is file/in-memory only.
-- SQLite/IndexedDB persistence and a full UI/API contract remain future work; the current durable store is a deliberately dependency-light JSONL/JSON implementation.
+- No licensed real-time market-data adapter exists yet; the current provider is file/in-memory/CSV-file only. The local HTTP service accepts normalized events but does not fetch external prices.
+- SQLite/IndexedDB persistence and a fuller UI/API contract remain future work; the current durable store is a deliberately dependency-light JSONL/JSON implementation and the local API is intentionally small.
 - Stop orders, cancellation, richer partial-fill queue models and shorting/leverage are not implemented.
 - Backtest replay requires normalized bar+quote events and now exposes snapshots, closed trades and metrics; durable persistence remains planned.
 - The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset or connected to a paper-forward execution policy. JSONL artifact persistence is available, but no real candidate model has been promoted.
 - Calibration and OOD checks are diagnostic utilities, not guarantees of probability accuracy or regime stability.
-- The next implementation task is a walk-forward evaluator that fits preprocessing on train, calibration on validation, resolves target-versioned predictions on test, and emits a persisted promotion report.
+- The next implementation task is a licensed provider adapter plus a walk-forward evaluator that fits preprocessing on train, calibration on validation, resolves target-versioned predictions on test, and emits a persisted promotion report.
 - Market structure, pattern, regime, event and experiment modules are initial primitives, not a complete platform.
 - TypeScript tests require `npm install` before `npm run typecheck` or `npm test`.
 

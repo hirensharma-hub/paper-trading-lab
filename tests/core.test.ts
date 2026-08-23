@@ -21,6 +21,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { JsonExperimentRepository, JsonlEventRepository, JsonlTradeRepository } from "../src/persistence";
+import { LocalPaperEngineService } from "../src/local-service";
 import { featureRegistry, getFeatureMetadata } from "../src/feature-registry";
 import { performanceByLabel } from "../src/conditional";
 import { StandardScaler, LogisticRegression, prepareDataset, classificationMetrics, calibrationBins, fitOodProfile, assessOod } from "../src/ml";
@@ -314,4 +315,27 @@ test("model bundles, decision policy, target registry, queue and durable artifac
   const targets = new TargetRegistry(); targets.register({ targetVersion: "forward-close-v1", kind: "FORWARD_CLOSE_RETURN", horizonBars: 2 }); assert.equal(targets.get("forward-close-v1")?.horizonBars, 2);
   const queue = new PredictionQueue(); queue.enqueue({ predictionId: "q1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 2, targetVersion: "forward-close-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }); assert.equal(queue.resolveAvailable([bar("SPY", 19, 100), bar("SPY", 20, 100), bar("SPY", 21, 105), bar("SPY", 22, 110)]).length, 1);
   const directory = mkdtempSync(join(tmpdir(), "paper-lab-artifacts-")); try { const experiences = new JsonlExperienceRepository(join(directory, "experience.jsonl")); experiences.append(resolvePrediction({ predictionId: "p2", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-v1", probability: 0.5, decision: "HOLD", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 19, 100), bar("SPY", 20, 101)])!); assert.equal(experiences.all().length, 1); const artifacts = new JsonModelArtifactRepository(join(directory, "models.jsonl")); artifacts.append(artifact); assert.equal(artifacts.all()[0].artifactId, "a1"); const pending = new JsonPredictionQueueRepository(join(directory, "pending.jsonl")); pending.append({ predictionId: "q2", symbol: "SPY", decisionTimestamp: 1, horizonBars: 1, targetVersion: "forward-close-v1", probability: 0.5, decision: "NO_TRADE", modelVersion: "m1", featureVersion: "f1" }); assert.equal(pending.all().length, 1); } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test("engine refuses stale market data and local service exposes safe controls", async () => {
+  const broker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 });
+  const engine = new ResearchEngine(new EmaCrossStrategy(), broker, new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 }), undefined, 1_000);
+  engine.setOperationalNow(200_000);
+  const stale = engine.onBar(bar("SPY", 0), { symbol: "SPY", ts: 60_000, bid: 100, ask: 100.1 });
+  assert.equal(stale.reason, "Market data is stale"); assert.equal(engine.health.dataFresh, false); assert.deepEqual(engine.health.staleSymbols, ["SPY"]);
+  const service = new LocalPaperEngineService(engine, { port: 0 }); await service.start();
+  try {
+    const address = service.address()!; const base = `http://${address.host}:${address.port}`;
+    const health = await fetch(`${base}/health`).then((response) => response.json()) as { ok: boolean; safety: string; engine: { paused: boolean } };
+    assert.equal(health.ok, true); assert.equal(health.safety, "PAPER_ONLY"); assert.equal(health.engine.paused, false);
+    const paused = await fetch(`${base}/control/pause`, { method: "POST" }).then((response) => response.json()) as { engine: { paused: boolean } };
+    assert.equal(paused.engine.paused, true);
+    const killed = await fetch(`${base}/control/kill-switch`, { method: "POST" }).then((response) => response.json()) as { engine: { killSwitch: boolean } };
+    assert.equal(killed.engine.killSwitch, true);
+    const resumed = await fetch(`${base}/control/resume`, { method: "POST" }).then((response) => response.json()) as { engine: { paused: boolean } };
+    assert.equal(resumed.engine.paused, true);
+    await fetch(`${base}/control/reset-kill-switch`, { method: "POST" }); await fetch(`${base}/control/resume`, { method: "POST" });
+    const finalHealth = await fetch(`${base}/health`).then((response) => response.json()) as { engine: { paused: boolean } };
+    assert.equal(finalHealth.engine.paused, false);
+  } finally { await service.stop(); }
 });

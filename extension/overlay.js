@@ -19,6 +19,7 @@
     panel.querySelector("[data-position]").textContent = `${state.position} ${state.symbol}`;
     panel.querySelector("[data-strategy]").textContent = state.strategy;
     panel.querySelector("[data-pause]").textContent = state.paused ? "Resume engine" : "Pause engine";
+    panel.querySelector(".dot").style.background = state.connected === false ? "#f59e0b" : state.dataFresh === false ? "#ef4444" : "#22c55e";
   };
   const refresh = () => chrome.runtime.sendMessage({ type: "getState" }, (response) => response?.state && update(response.state));
   panel.querySelector("[data-pause]").addEventListener("click", () => {

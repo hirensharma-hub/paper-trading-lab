@@ -1,10 +1,12 @@
 import type { Bar, DataQualityIssue, DataQualityReport, Quote } from "./domain";
 import { validateBar, validateQuote } from "./data";
+import { readFile } from "node:fs/promises";
 
 export interface HistoricalMarketDataProvider { getBars(symbol: string, startMs?: number, endMs?: number): Promise<readonly Bar[]>; }
 export interface LiveQuoteProvider { subscribe(symbols: readonly string[], onQuote: (quote: Quote) => void): Promise<() => void>; }
 export interface InstrumentMetadataProvider { getInstrument(symbol: string): Promise<{ symbol: string; exchange?: string; currency?: string } | null>; }
 export class InMemoryMarketDataProvider implements HistoricalMarketDataProvider { constructor(private readonly bars: readonly Bar[]) {} async getBars(symbol: string, startMs = -Infinity, endMs = Infinity) { return this.bars.filter((bar) => bar.symbol === symbol && bar.startMs >= startMs && bar.startMs <= endMs).sort((a, b) => a.startMs - b.startMs); } }
+export class CsvFileMarketDataProvider implements HistoricalMarketDataProvider { constructor(private readonly filePath: string) {} async getBars(symbol: string, startMs = -Infinity, endMs = Infinity) { const parsed = parseCsvBars(await readFile(this.filePath, "utf8")); return parsed.bars.filter((bar) => bar.symbol === symbol && bar.startMs >= startMs && bar.startMs <= endMs); } }
 
 const REQUIRED = ["symbol", "timestamp", "open", "high", "low", "close", "volume"] as const;
 export function parseCsvBars(csv: string): { bars: readonly Bar[]; report: DataQualityReport } {

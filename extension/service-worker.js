@@ -1,8 +1,9 @@
 const DEFAULT_STATE = {
-  demoMode: true, paused: false, symbol: "SPY", strategy: "ema-cross v1.0.0",
+  demoMode: true, connected: false, dataFresh: false, paused: false, killSwitch: false, symbol: "SPY", strategy: "ema-cross v1.0.0",
   equity: 100000, cash: 100000, realisedPnl: 0, position: 0, lastPrice: 500,
   orders: 0, updatedAt: Date.now()
 };
+const ENGINE_API = "http://127.0.0.1:47821";
 
 async function readState() {
   const stored = await chrome.storage.local.get("paperState");
@@ -14,6 +15,14 @@ async function writeState(state) {
   return state;
 }
 
+async function engineRequest(path, options = {}) {
+  try {
+    const response = await fetch(`${ENGINE_API}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers ?? {}) } });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch { return null; }
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   const stored = await chrome.storage.local.get("paperState");
   if (!stored.paperState) await writeState(DEFAULT_STATE);
@@ -22,9 +31,13 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   (async () => {
     let state = await readState();
+    const remote = await engineRequest("/state");
+    if (remote?.ok) state = { ...state, connected: true, paused: remote.health.paused, killSwitch: remote.health.killSwitch, dataFresh: remote.health.dataFresh, engineHealth: remote.health, equity: remote.snapshot.equity, cash: remote.snapshot.cash, position: remote.health.positions.find((position) => position.symbol === state.symbol)?.quantity ?? 0 };
     if (message.type === "getState") sendResponse({ ok: true, state });
     else if (message.type === "setPaused") {
-      state = await writeState({ ...state, paused: Boolean(message.paused) });
+      const remoteControl = await engineRequest(message.paused ? "/control/pause" : "/control/resume", { method: "POST" });
+      if (remoteControl?.ok) state = await writeState({ ...state, paused: message.paused, connected: true });
+      else state = await writeState({ ...state, paused: Boolean(message.paused) });
       sendResponse({ ok: true, state });
     } else if (message.type === "resetDemo") {
       state = await writeState(DEFAULT_STATE);

@@ -38,6 +38,17 @@ The persistence layer currently provides restart-safe JSONL/JSON repositories fo
 
 Analogue lookup can be constrained by decision time and regime and can use the same train-fitted scaler as a model artifact. Evidence fields are never inferred: without explicit out-of-sample, calibration, cost and stability evidence, the intelligence layer will not issue a BUY. Target versions, pending predictions, resolved experience and model artifacts can be stored as JSONL for reproducible offline research.
 
+## Run the local paper engine
+
+Start the authoritative local process with:
+
+```bash
+npm install
+npm run service
+```
+
+It listens only on `127.0.0.1:47821` and accepts normalized paper-market events at `/market-event`. The extension checks `/state` and uses the service’s health, pause and resume controls when the service is available; otherwise it stays in its clearly marked offline demo mode. No external market-data credentials or broker adapters are included.
+
 ## Try the Chrome extension
 
 1. Download the repository from GitHub or clone it temporarily.

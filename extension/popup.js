@@ -1,8 +1,8 @@
 const send = (type, extra = {}) => new Promise((resolve) => chrome.runtime.sendMessage({ type, ...extra }, resolve));
 const money = (value) => `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 function render(state) {
-  document.querySelector("[data-status]").textContent = state.paused ? "PAUSED" : "READY";
-  document.querySelector("[data-status]").style.background = state.paused ? "#7f1d1d" : "#14532d";
+  document.querySelector("[data-status]").textContent = state.connected === false ? "OFFLINE DEMO" : state.paused ? "PAUSED" : "CONNECTED";
+  document.querySelector("[data-status]").style.background = state.connected === false ? "#92400e" : state.paused ? "#7f1d1d" : "#14532d";
   document.querySelector("[data-equity]").textContent = money(state.equity);
   document.querySelector("[data-cash]").textContent = money(state.cash);
   document.querySelector("[data-position]").textContent = state.position;

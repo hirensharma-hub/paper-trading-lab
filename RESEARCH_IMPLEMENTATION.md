@@ -39,4 +39,7 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | Model artifact | Reproducibility | Logistic weights bundled with scaler, feature version and target version | PARTIAL |
 | Experience persistence | Paper experience | JSONL pending/resolved prediction and model-artifact repositories | PARTIAL |
 | Decision policy | Safe decisioning | Evidence-quality and OOD policy can force NO_TRADE | IMPLEMENTED |
+| Local engine service | V1 operations | Localhost HTTP health/state/market-event/control protocol | PARTIAL |
+| Stale-data safety | Operational controls | Quote-age guard and stale-symbol health reporting | IMPLEMENTED |
+| Historical file provider | Data ingestion | CSV-file provider using canonical validation and quality reporting | IMPLEMENTED |
 | Trading Mastery | Structured reference | Initial linked entries; broad topic expansion remains | PARTIAL |
