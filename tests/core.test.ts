@@ -17,6 +17,12 @@ import { InMemoryEventRepository, InMemoryExperimentRepository } from "../src/re
 import { replay } from "../src/backtest";
 import { generateWalkForwardSplits, tripleBarrierTarget } from "../src/research";
 import { correlation, expectedValue, mean, quantile, standardDeviation } from "../src/statistics";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { JsonExperimentRepository, JsonlEventRepository, JsonlTradeRepository } from "../src/persistence";
+import { featureRegistry, getFeatureMetadata } from "../src/feature-registry";
+import { performanceByLabel } from "../src/conditional";
 
 const bar = (symbol: string, i: number, close = 100 + i) => ({ symbol, startMs: i * 60_000, intervalMs: 60_000, open: close, high: close + 1, low: close - 1, close, volume: 100 + i });
 const order = (id: string, side: "BUY" | "SELL" = "BUY", quantity = 10, limitPrice?: number) => ({ id, symbol: "SPY", side, type: limitPrice === undefined ? "MARKET" as const : "LIMIT" as const, quantity, limitPrice, status: "NEW" as const, strategyId: "test", strategyVersion: "1", reason: "unit test", fills: [] });
@@ -188,4 +194,31 @@ test("replay produces closed trades from broker fills", () => {
   assert.ok(result.trades.length >= 1);
   assert.ok(result.snapshots.every((snapshot) => Number.isFinite(snapshot.equity)));
   assert.ok(result.trades.every((trade) => trade.netPnl === trade.grossPnl - trade.entryFees - trade.exitFees));
+});
+
+test("durable repositories reload append-only events, experiments and trades", () => {
+  const directory = mkdtempSync(join(tmpdir(), "paper-lab-"));
+  try {
+    const events = new JsonlEventRepository(join(directory, "events.jsonl"));
+    events.append({ id: "event-1", timestamp: 1, eventType: "MARKET_BAR_ACCEPTED", component: "test", version: "1", payload: { symbol: "SPY" } });
+    assert.equal(new JsonlEventRepository(join(directory, "events.jsonl")).all().length, 1);
+    assert.throws(() => events.append({ id: "event-1", timestamp: 2, eventType: "QUOTE_ACCEPTED", component: "test", version: "1", payload: {} }));
+    const experiments = new JsonExperimentRepository(join(directory, "experiments.json"));
+    experiments.save({ experimentId: "e1", datasetId: "csv", datasetVersion: "1", symbols: ["SPY"], timeframe: "1m", featureVersions: ["return-1"], strategyVersion: "ema-1", parameters: {}, costs: { feeBps: 1, slippageBps: 1 }, createdAt: 1 });
+    assert.equal(new JsonExperimentRepository(join(directory, "experiments.json")).get("e1")?.datasetId, "csv");
+    const trades = new JsonlTradeRepository(join(directory, "trades.jsonl"));
+    const closedTrade = { tradeId: "t1", symbol: "SPY", strategyId: "s", strategyVersion: "1", entryTimestamp: 1, exitTimestamp: 2, entryPrice: 100, exitPrice: 101, quantity: 1, grossPnl: 1, entryFees: 0, exitFees: 0, netPnl: 1, holdingPeriodMs: 1 };
+    trades.append(closedTrade);
+    assert.equal(new JsonlTradeRepository(join(directory, "trades.jsonl")).all()[0].netPnl, 1);
+    assert.match(readFileSync(join(directory, "events.jsonl"), "utf8"), /MARKET_BAR_ACCEPTED/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test("feature registry and conditional performance expose reproducible metadata", () => {
+  assert.ok(featureRegistry.length >= 7);
+  assert.equal(getFeatureMetadata("rsi-14")?.category, "MOMENTUM");
+  const trades = ["UPTREND", "RANGE"].map((regime, index) => ({ tradeId: `t${index}`, symbol: "SPY", strategyId: "s", strategyVersion: "1", entryTimestamp: index, exitTimestamp: index + 1, entryPrice: 100, exitPrice: index ? 99 : 101, quantity: 1, grossPnl: index ? -1 : 1, entryFees: 0, exitFees: 0, netPnl: index ? -1 : 1, holdingPeriodMs: 1, entryRegime: regime }));
+  const grouped = performanceByLabel(trades, (trade) => trade.entryRegime);
+  assert.deepEqual(grouped.map((group) => group.label), ["RANGE", "UPTREND"]);
+  assert.equal(grouped.every((group) => group.sampleCount === 1), true);
 });

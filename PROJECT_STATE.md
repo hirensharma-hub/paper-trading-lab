@@ -26,6 +26,9 @@ Phase 2 — research infrastructure and intelligence primitives; persistence and
 - `src/research-ledger.ts`: append-only event repository plus experiment/hypothesis records.
 - `src/trades.ts`: fill-derived long-only closed-trade ledger with fee allocation and MFE/MAE.
 - `src/statistics.ts`: descriptive statistics, correlation, confidence interval and expected-value utilities.
+- `src/persistence.ts`: durable JSONL/JSON repositories for events, experiments and closed trades.
+- `src/feature-registry.ts`: versioned metadata for implemented baseline features.
+- `src/conditional.ts`: performance grouping by regime/pattern/model labels.
 - `src/backtest.ts`: deterministic replay using the same engine and broker interfaces.
 - `extension/`: lightweight MV3 display-only demo popup/overlay. It does not scrape TradingView or submit orders.
 
@@ -43,6 +46,8 @@ Phase 2 — research infrastructure and intelligence primitives; persistence and
 - Added holiday/early-close provider hooks and CI verification workflow.
 - Upgraded replay to produce portfolio snapshots, closed trades and performance metrics.
 - Added triple-barrier targets, ambiguity handling and walk-forward split generation.
+- Added restart-safe file-backed event, experiment and trade repositories.
+- Added feature metadata registry and conditional performance reporting.
 - Removed the hard-coded one-minute volatility annualisation assumption.
 - Removed the invented strategy confidence value.
 - Added reproducible TypeScript tooling declarations.
@@ -51,7 +56,7 @@ Phase 2 — research infrastructure and intelligence primitives; persistence and
 ## Known limitations
 
 - No licensed market-data adapter or local HTTP engine service exists yet; the current provider is file/in-memory only.
-- SQLite/IndexedDB persistence, append-only event audit storage and a full UI/API contract remain future work.
+- SQLite/IndexedDB persistence and a full UI/API contract remain future work; the current durable store is a deliberately dependency-light JSONL/JSON implementation.
 - Stop orders, cancellation, richer partial-fill queue models and shorting/leverage are not implemented.
 - Backtest replay requires normalized bar+quote events and now exposes snapshots, closed trades and metrics; durable persistence remains planned.
 - No ML model is active; this is intentional until the research/backtest foundation is independently validated.

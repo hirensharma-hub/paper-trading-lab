@@ -10,7 +10,8 @@
 - [x] Per-symbol risk marks, session calendar, purged split and explicit point-in-time timestamps
 - [x] Cash/fee/long-only accounting invariants
 - [x] CI typecheck/test workflow
-- [ ] Persistence and event audit trail
+- [x] Durable JSONL/JSON event, experiment and trade persistence abstraction
+- [ ] SQLite/IndexedDB persistence adapters
 
 ## Phase 2 — Historical research
 
@@ -20,13 +21,14 @@
 - [x] Typed in-memory event, experiment and hypothesis repositories
 - [x] Fill-derived closed-trade ledger and replay metrics
 - [x] Triple-barrier targets, walk-forward folds and statistical utilities
-- [ ] Walk-forward and rolling-window backtests
+- [x] Walk-forward and rolling-window split generation
 - [ ] Cost stress tests, benchmarks and trade attribution
 
 ## Phase 3 — Research features and mastery
 
 - [ ] Modular trend, volatility, volume, structure, pattern and regime engines
 - [x] Initial structure, pattern and rule-based regime primitives
+- [x] Feature metadata registry and conditional performance grouping
 - [ ] Structured Trading Mastery knowledge base linked to implemented modules
 
 ## Phase 4 — Predictive research

@@ -32,6 +32,8 @@ The research core also exposes provider-independent file/in-memory market-data i
 
 Replay reconstructs closed trades from broker fills and reports equity snapshots, fees, net P/L, holding periods and MFE/MAE. Research utilities include triple-barrier targets, purged/walk-forward splits, descriptive statistics and expected value.
 
+The persistence layer currently provides restart-safe JSONL/JSON repositories for the event journal, experiments and closed trades. This keeps the domain independent from a database driver; SQLite and browser IndexedDB adapters remain planned.
+
 ## Try the Chrome extension
 
 1. Download the repository from GitHub or clone it temporarily.
