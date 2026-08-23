@@ -38,7 +38,7 @@ The persistence layer currently provides restart-safe JSONL/JSON repositories fo
 
 Analogue lookup can be constrained by decision time and regime and can use the same train-fitted scaler as a model artifact. Evidence fields are never inferred: without explicit out-of-sample, calibration, cost and stability evidence, the intelligence layer will not issue a BUY. Target versions, pending predictions, resolved experience and model artifacts can be stored as JSONL for reproducible offline research.
 
-The correctness contract is strict: analogue observations must carry usable decision and target-end timestamps when queried as-of a decision; models fit only `TRAIN` rows; feature and target versions must match; stale or future market events are rejected before state mutation; OOD states are blocked by decision policy; and the local API does not use wildcard CORS or accept unvalidated event payloads.
+The correctness contract is strict: analogue observations must carry usable decision and target-end timestamps when queried as-of a decision; models fit only `TRAIN` rows; feature and target versions must match; stale or future market events are rejected before state mutation; OOD states are blocked by decision policy; and the local API does not use wildcard CORS or accept unvalidated event payloads. The integrated engine uses an exhaustive action mapping (`BUY` submits only a buy, `SELL` only reduces an existing long, and `HOLD`/`NO_TRADE` submit nothing), marks all symbols before risk checks, resets daily-risk state by the configured trading session, and preserves triple-barrier `AMBIGUOUS` outcomes. A model-side feature transform and an analogue scaler cannot both be configured, preventing silent double preprocessing.
 
 ## Run the local paper engine
 

@@ -29,7 +29,7 @@ import { StandardScaler, LogisticRegression, prepareDataset, classificationMetri
 import { nearestAnalogues } from "../src/analogues";
 import { assessEvidence } from "../src/evidence";
 import { TradeLedger } from "../src/trades";
-import { IntelligenceEngine } from "../src/intelligence";
+import { IntelligenceEngine, type MarketAnalysisSnapshot } from "../src/intelligence";
 import { resolvePrediction } from "../src/experience";
 import { ModelRegistry } from "../src/model-registry";
 import { PredictionQueue } from "../src/experience";
@@ -40,6 +40,22 @@ import { JsonlExperienceRepository, JsonModelArtifactRepository, JsonPredictionQ
 
 const bar = (symbol: string, i: number, close = 100 + i) => ({ symbol, startMs: i * 60_000, intervalMs: 60_000, open: close, high: close + 1, low: close - 1, close, volume: 100 + i });
 const order = (id: string, side: "BUY" | "SELL" = "BUY", quantity = 10, limitPrice?: number) => ({ id, symbol: "SPY", side, type: limitPrice === undefined ? "MARKET" as const : "LIMIT" as const, quantity, limitPrice, status: "NEW" as const, strategyId: "test", strategyVersion: "1", reason: "unit test", fills: [] });
+
+class FixedDecisionEngine extends DecisionEngine {
+  constructor(private readonly fixedAction: "BUY" | "SELL" | "HOLD" | "NO_TRADE") { super(); }
+  override decide(snapshot: MarketAnalysisSnapshot) { return { action: this.fixedAction, symbol: snapshot.symbol, timestamp: snapshot.timestamp, allowed: true, reason: "test action" }; }
+}
+
+class FixedIntelligenceEngine extends IntelligenceEngine {
+  constructor(private readonly fixedSnapshot: MarketAnalysisSnapshot) { super(); }
+  override analyze() { return this.fixedSnapshot; }
+}
+
+class SequenceDecisionEngine extends DecisionEngine {
+  private index = 0;
+  constructor(private readonly actions: readonly ("BUY" | "SELL" | "HOLD" | "NO_TRADE")[]) { super(); }
+  override decide(snapshot: MarketAnalysisSnapshot) { const action = this.actions[Math.min(this.index++, this.actions.length - 1)] ?? "NO_TRADE"; return { action, symbol: snapshot.symbol, timestamp: snapshot.timestamp, allowed: true, reason: "sequence" }; }
+}
 
 test("indicator calculations use known values and warm up", () => {
   assert.equal(ema([1, 2, 3, 4], 2), 3.5);
@@ -353,4 +369,32 @@ test("critical correctness gates enforce separation, schema, costs, OOD, and sha
   const staleIntegrated = new IntegratedPaperResearchEngine(new IntelligenceEngine(), new DecisionEngine(), new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }), new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 })); staleIntegrated.setOperationalNow(200_000); assert.equal(staleIntegrated.onBar(bar("AAPL", 0), { symbol: "AAPL", ts: 60_000, bid: 99, ask: 100 }).decision.reason, "Market data is stale"); assert.equal(staleIntegrated.health.bars, 0);
   const futureEngine = new ResearchEngine(new EmaCrossStrategy(), new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }), new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 })); futureEngine.setOperationalNow(100_000); assert.equal(futureEngine.onBar(bar("QQQ", 0), { symbol: "QQQ", ts: 101_500, bid: 99, ask: 100 }).reason, "Quote is from the future"); assert.equal(futureEngine.health.bars, 0);
   const triple = resolvePrediction({ predictionId: "tb", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "triple-barrier-v1", targetParameters: { atr: 1 }, probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [{ ...bar("SPY", 0, 100) }, { ...bar("SPY", 1, 100), high: 102, low: 100 }]); assert.equal(triple?.resolved.label, "WIN");
+});
+
+test("integrated engine exhaustively maps BUY, SELL, HOLD, and NO_TRADE without fall-through", () => {
+  const risk = () => new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 20, feeBps: 0 });
+  const quote = { symbol: "SPY", ts: 60_001, bid: 99, ask: 100, last: 99.5 };
+  const snapshot = { symbol: "SPY", timestamp: quote.ts, features: null, structure: null, regime: null, patterns: [], decision: "HOLD" as const, reason: "valid", evidence: { quality: "STRONG" as const, score: 1, components: {} }, prediction: { probability: 0.5 }, expectedValue: 0 };
+  const intelligence = new FixedIntelligenceEngine(snapshot);
+  const make = (action: "BUY" | "SELL" | "HOLD" | "NO_TRADE") => { const broker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }); return { broker, engine: new IntegratedPaperResearchEngine(intelligence, new FixedDecisionEngine(action), broker, risk()) }; };
+  const buy = make("BUY"); const buyResult = buy.engine.onBar(bar("SPY", 0), quote); assert.equal(buyResult.filled, 10); assert.equal(buy.broker.allOrders.filter((item) => item.side === "BUY").length, 1); assert.equal(buy.broker.allOrders.some((item) => item.side === "SELL"), false);
+  const sell = make("SELL"); const seed = order("seed", "BUY", 5); sell.broker.submit(seed); sell.broker.onQuote({ ...quote, ts: 1 }); const sellResult = sell.engine.onBar(bar("SPY", 0), quote); assert.equal(sellResult.filled, 5); assert.equal(sell.broker.allOrders.filter((item) => item.side === "SELL").length, 1);
+  for (const action of ["HOLD", "NO_TRADE"] as const) { const noTrade = make(action); const result = noTrade.engine.onBar(bar("SPY", 0), quote); assert.equal(result.filled, 0); assert.equal(noTrade.broker.allOrders.length, 0); }
+  const held = make("HOLD"); const heldSeed = order("held-seed", "BUY", 5); held.broker.submit(heldSeed); held.broker.onQuote({ ...quote, ts: 1 }); const before = held.broker.openPositions[0]?.quantity; held.engine.onBar(bar("SPY", 0), quote); assert.equal(held.broker.openPositions[0]?.quantity, before); assert.equal(held.broker.allOrders.length, 1);
+});
+
+test("integrated portfolio marks include every symbol and replay updates MFE/MAE", () => {
+  const broker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 });
+  broker.submit({ ...order("spy-seed", "BUY", 10), symbol: "SPY" }); broker.onQuote({ symbol: "SPY", ts: 1, bid: 99, ask: 100 });
+  broker.submit({ ...order("qqq-seed", "BUY", 10), symbol: "QQQ" }); broker.onQuote({ symbol: "QQQ", ts: 2, bid: 49, ask: 50 });
+  const snapshot = { symbol: "SPY", timestamp: 60_001, features: null, structure: null, regime: null, patterns: [], decision: "HOLD" as const, reason: "valid", evidence: { quality: "STRONG" as const, score: 1, components: {} }, prediction: { probability: 0.5 }, expectedValue: 0 };
+  const engine = new IntegratedPaperResearchEngine(new FixedIntelligenceEngine(snapshot), new FixedDecisionEngine("HOLD"), broker, new RiskManager({ maxPositionValue: 2_000, maxGrossExposure: 4_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 20, feeBps: 0 }));
+  const result = engine.onBar({ ...bar("SPY", 0, 105), high: 110, low: 95 }, { symbol: "SPY", ts: 60_001, bid: 104, ask: 105, last: 105 });
+  assert.equal(result.filled, 0); assert.equal(engine.portfolioSnapshot(60_001).equity, 10_050);
+  const replayBroker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }); const replayEngine = new IntegratedPaperResearchEngine(new FixedIntelligenceEngine(snapshot), new SequenceDecisionEngine(["BUY", "HOLD", "SELL"]), replayBroker, new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 20, feeBps: 0 })); const replay = replayIntegrated([{ bar: bar("SPY", 0, 100), quote: { symbol: "SPY", ts: 60_001, bid: 99, ask: 100, last: 100 } }, { bar: { ...bar("SPY", 1, 101), high: 120, low: 90 }, quote: { symbol: "SPY", ts: 120_001, bid: 100, ask: 101, last: 101 } }, { bar: { ...bar("SPY", 2, 102), high: 130, low: 80 }, quote: { symbol: "SPY", ts: 180_001, bid: 101, ask: 102, last: 102 } }], replayEngine); assert.equal(replay.trades.length, 1); assert.equal(replay.trades[0]?.mfePerShare, 30); assert.equal(replay.trades[0]?.maePerShare, -20);
+});
+
+test("triple-barrier resolution preserves AMBIGUOUS and target horizon authority", () => {
+  const ambiguous = resolvePrediction({ predictionId: "amb", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "triple-barrier-v1", targetParameters: { atr: 1 }, probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [{ ...bar("SPY", 0, 100) }, { ...bar("SPY", 1, 100), high: 102, low: 98 }]); assert.equal(ambiguous?.resolved.label, "AMBIGUOUS");
+  const registry = new TargetRegistry(); registry.register({ targetVersion: "fixed-h2", kind: "FORWARD_CLOSE_RETURN", horizonBars: 2 }); assert.equal(resolvePrediction({ predictionId: "wrong", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "fixed-h2", probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [bar("SPY", 0), bar("SPY", 1), bar("SPY", 2)], registry), null);
 });
