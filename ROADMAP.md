@@ -28,6 +28,7 @@
 
 - [ ] Modular trend, volatility, volume, structure, pattern and regime engines
 - [x] Initial structure, pattern and rule-based regime primitives
+- [x] Point-in-time integrated structure/regime/pattern intelligence snapshot
 - [x] Feature metadata registry and conditional performance grouping
 - [ ] Structured Trading Mastery knowledge base linked to implemented modules
 
@@ -36,12 +37,15 @@
 - [x] Point-in-time prediction targets and leakage tests beyond the baseline
 - [x] Logistic regression baseline, calibration and model metadata
 - [x] Historical analogues and evidence-quality scoring
+- [x] Prediction resolution with delayed forward outcomes and MFE/MAE
+- [x] Candidate/active/rejected model metadata and OOS-gated promotion
 - [ ] Real licensed dataset training, persisted model registry and promotion metadata
 
 ## Phase 5 — Robustness and controlled learning
 
 - [ ] Walk-forward model comparison, cost/parameter sensitivity and resampling
 - [ ] Experience records, production drift/OOD monitoring and candidate model promotion
+- [ ] Persisted walk-forward artifacts, validation-only calibration and reproducible model registry storage
 
 ## Phase 6 — Local paper-live workflow
 

@@ -4,7 +4,7 @@ Updated: 2026-08-23
 
 ## Current phase
 
-Phase 4 — predictive research scaffolding; the ML layer is deterministic and tested on synthetic inputs, but no production model is active.
+Phase 4 — integrated point-in-time intelligence research; the ML layer is deterministic and no production model is active.
 
 ## Architecture
 
@@ -32,6 +32,9 @@ Phase 4 — predictive research scaffolding; the ML layer is deterministic and t
 - `src/ml.ts`: train-only standardization, logistic baseline, classification/calibration metrics and simple OOD diagnostics.
 - `src/analogues.ts`: nearest historical analogue summaries with sample-size/evidence labels.
 - `src/evidence.ts`: transparent evidence-quality scoring for research claims.
+- `src/intelligence.ts`: point-in-time feature → structure → regime → pattern → model/OOD → analogue → evidence → decision pipeline.
+- `src/experience.ts`: delayed prediction resolution with forward return and MFE/MAE.
+- `src/model-registry.ts`: candidate/active/rejected model metadata with OOS-gated promotion.
 - `src/backtest.ts`: deterministic replay using the same engine and broker interfaces.
 - `extension/`: lightweight MV3 display-only demo popup/overlay. It does not scrape TradingView or submit orders.
 
@@ -56,6 +59,8 @@ Phase 4 — predictive research scaffolding; the ML layer is deterministic and t
 - Added reproducible TypeScript tooling declarations.
 - Added project-state and phased roadmap documentation.
 - Added leakage-safe ML dataset preparation, a dependency-free logistic baseline, calibration bins, OOD checks, historical analogue summaries and evidence-quality scoring.
+- Corrected trend-regime sign, prior-range breakout and failed-breakout logic, pivot confirmation timestamps, entry-bar MFE/MAE contamination, elapsed-time metric annualisation, quote-last validation, slippage-aware risk sizing and conditional return methodology.
+- Added the integrated point-in-time intelligence snapshot, structured BUY/HOLD/NO_TRADE decisions, prediction resolution and an OOS-gated model registry.
 
 ## Known limitations
 
@@ -63,8 +68,9 @@ Phase 4 — predictive research scaffolding; the ML layer is deterministic and t
 - SQLite/IndexedDB persistence and a full UI/API contract remain future work; the current durable store is a deliberately dependency-light JSONL/JSON implementation.
 - Stop orders, cancellation, richer partial-fill queue models and shorting/leverage are not implemented.
 - Backtest replay requires normalized bar+quote events and now exposes snapshots, closed trades and metrics; durable persistence remains planned.
-- The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset, persisted in a model registry, drift-monitored or promoted for paper-forward use.
+- The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset or connected to a paper-forward execution policy. Registry metadata is in-memory and promotion is only a research gate.
 - Calibration and OOD checks are diagnostic utilities, not guarantees of probability accuracy or regime stability.
+- The next implementation task is a persisted, walk-forward experiment/model artifact workflow with calibration fitted only on validation data, then a separate local API contract for paper-forward observation.
 - Market structure, pattern, regime, event and experiment modules are initial primitives, not a complete platform.
 - TypeScript tests require `npm install` before `npm run typecheck` or `npm test`.
 

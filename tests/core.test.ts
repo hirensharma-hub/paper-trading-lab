@@ -26,6 +26,10 @@ import { performanceByLabel } from "../src/conditional";
 import { StandardScaler, LogisticRegression, prepareDataset, classificationMetrics, calibrationBins, fitOodProfile, assessOod } from "../src/ml";
 import { nearestAnalogues } from "../src/analogues";
 import { assessEvidence } from "../src/evidence";
+import { TradeLedger } from "../src/trades";
+import { IntelligenceEngine } from "../src/intelligence";
+import { resolvePrediction } from "../src/experience";
+import { ModelRegistry } from "../src/model-registry";
 
 const bar = (symbol: string, i: number, close = 100 + i) => ({ symbol, startMs: i * 60_000, intervalMs: 60_000, open: close, high: close + 1, low: close - 1, close, volume: 100 + i });
 const order = (id: string, side: "BUY" | "SELL" = "BUY", quantity = 10, limitPrice?: number) => ({ id, symbol: "SPY", side, type: limitPrice === undefined ? "MARKET" as const : "LIMIT" as const, quantity, limitPrice, status: "NEW" as const, strategyId: "test", strategyVersion: "1", reason: "unit test", fills: [] });
@@ -250,4 +254,41 @@ test("historical analogues and evidence quality expose sample size instead of fa
   assert.ok(result.regimeDistribution.UPTREND > 0);
   assert.equal(assessEvidence({ sampleSize: 3, outOfSample: true, calibrated: true, costSurvives: true, regimeConsistent: true, parameterStable: true, recentStable: true }).quality, "INSUFFICIENT");
   assert.ok(assessEvidence({ sampleSize: 100, outOfSample: true, calibrated: true, costSurvives: true, regimeConsistent: true, parameterStable: true, recentStable: true }).score > 0.9);
+});
+
+test("correctness gates prevent look-ahead and impossible breakouts", () => {
+  assert.throws(() => validateQuote({ symbol: "SPY", ts: 1, bid: 99, ask: 100, last: 0 }));
+  const bars = Array.from({ length: 20 }, (_, i) => bar("SPY", i, 100 + i));
+  const breakoutBars = [...bars, { ...bar("SPY", 20, 130), high: 131, low: 129 }];
+  const features = buildFeatures(breakoutBars)!; const structure = detectMarketStructure(breakoutBars, { rangeLookback: 20 });
+  assert.ok(structure && features && features.close > structure.rangeHigh);
+  assert.ok(detectPatterns(features, structure).some((pattern) => pattern.type === "BREAKOUT"));
+  assert.ok(structure!.swingHighs.every((swing) => swing.confirmedTimestamp >= swing.timestamp));
+  const regime = classifyRegime({ ...features, emaFast: 100, emaSlow: 110, emaFastDistance: 0.1, emaSlowDistance: 0.2 }, structure);
+  assert.notEqual(regime.trend, "UPTREND");
+});
+
+test("MFE/MAE start at the fill and risk sizing includes slippage", () => {
+  const ledger = new TradeLedger(); const buy = order("entry", "BUY", 1); const sell = order("exit", "SELL", 1);
+  ledger.applyFill(buy, { id: "f1", orderId: "entry", ts: 100, quantity: 1, price: 100, fee: 0 }, { high: 200, low: 1 });
+  ledger.updateMark("SPY", 110, 90); ledger.applyFill(sell, { id: "f2", orderId: "exit", ts: 200, quantity: 1, price: 105, fee: 0 });
+  assert.equal(ledger.all()[0].mfePerShare, 10); assert.equal(ledger.all()[0].maePerShare, -10);
+  const risk = new (class extends RiskManager { constructor() { super({ maxPositionValue: 1_000, maxGrossExposure: 1_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 100, slippageBps: 100 }); } })();
+  const decision = risk.size({ ...order("sizing"), submittedAt: 1 }, 100, { equity: 1_000, dayStartEquity: 1_000, highWaterMark: 1_000, openPositions: [], ordersInLastMinute: 0, killSwitch: false, marks: {} });
+  assert.deepEqual(decision, { allowed: true, quantity: 9 });
+});
+
+test("metrics, intelligence, prediction resolution and model registry are integrated", () => {
+  const year = 365.2425 * 24 * 60 * 60 * 1000;
+  assert.ok(Math.abs(performanceMetrics([{ ts: 0, value: 100 }, { ts: year, value: 110 }]).cagr - 0.1) < 1e-9);
+  const model = { predictProbability: () => 0.9 };
+  const observations = Array.from({ length: 25 }, () => ({ features: Array(9).fill(0), forwardReturn: 0.1, regime: "UPTREND", mfe: 0.1, mae: -0.01 }));
+  const intelligence = new IntelligenceEngine({ model, analogues: observations, minimumAnalogueSample: 20 });
+  let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined;
+  for (let i = 0; i < 20; i++) snapshot = intelligence.analyze(bar("SPY", i));
+  assert.equal(snapshot?.decision, "BUY"); assert.ok(snapshot?.evidence); assert.ok(snapshot?.expectedValue! > 0);
+  const prediction = resolvePrediction({ predictionId: "p1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 2, probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 20, 100), bar("SPY", 21, 105), bar("SPY", 22, 110)]);
+  assert.equal(prediction?.resolved.label, "WIN"); assert.ok(Math.abs(prediction!.resolved.maxFavorableExcursion - 0.06) < 1e-12);
+  const registry = new ModelRegistry(); registry.register({ modelId: "m1", version: "1", algorithm: "logistic", featureVersion: "f1", datasetVersion: "d1", metrics: { outOfSampleScore: 0.7 }, lifecycle: "CANDIDATE", createdAt: 1 });
+  assert.equal(registry.promote("m1", 0.6).lifecycle, "ACTIVE");
 });

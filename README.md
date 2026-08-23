@@ -34,6 +34,8 @@ Replay reconstructs closed trades from broker fills and reports equity snapshots
 
 The persistence layer currently provides restart-safe JSONL/JSON repositories for the event journal, experiments and closed trades. This keeps the domain independent from a database driver; SQLite and browser IndexedDB adapters remain planned.
 
+`src/intelligence.ts` composes the point-in-time research signals into an explainable snapshot and can return `BUY`, `HOLD` or `NO_TRADE`; it does not submit orders. `src/experience.ts` resolves predictions only after their horizon has elapsed, and `src/model-registry.ts` requires an out-of-sample score threshold before a candidate can become active. These are research controls, not claims of predictive performance.
+
 ## Try the Chrome extension
 
 1. Download the repository from GitHub or clone it temporarily.

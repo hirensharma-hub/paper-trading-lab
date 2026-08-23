@@ -16,5 +16,5 @@ export function replay(events: readonly ReplayEvent[], engine: ResearchEngine): 
     for (const order of engine.broker.allOrders) for (const fill of order.fills) if (!processedFills.has(fill.id)) { processedFills.add(fill.id); ledger.applyFill(order, fill, { high: event.bar.high, low: event.bar.low, regime: event.regime, patterns: event.patterns }); }
     const snapshot = engine.portfolioSnapshot(event.quote.ts); snapshots.push(snapshot); equity.push(snapshot.equity);
   }
-  const trades = ledger.all(); const metrics = performanceMetrics(equity, trades.map((trade) => trade.netPnl)); return { signals, filledOrders: engine.broker.allOrders.filter((order) => order.status === "FILLED").length, equity, snapshots, trades, metrics, finalEquity: equity.at(-1)! };
+  const trades = ledger.all(); const metrics = performanceMetrics(snapshots.map((snapshot) => ({ ts: snapshot.ts, value: snapshot.equity })), trades.map((trade) => trade.netPnl)); return { signals, filledOrders: engine.broker.allOrders.filter((order) => order.status === "FILLED").length, equity, snapshots, trades, metrics, finalEquity: equity.at(-1)! };
 }

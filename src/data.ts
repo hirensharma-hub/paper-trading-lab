@@ -10,6 +10,7 @@ export function validateQuote(quote: Quote): void {
   if (!quote.symbol || !Number.isInteger(quote.ts) || !Number.isFinite(quote.bid) || !Number.isFinite(quote.ask) || quote.bid <= 0 || quote.ask <= 0 || quote.bid > quote.ask) throw new Error("Invalid quote");
   if (quote.bidSize !== undefined && (!Number.isFinite(quote.bidSize) || quote.bidSize < 0)) throw new Error("Invalid bid size");
   if (quote.askSize !== undefined && (!Number.isFinite(quote.askSize) || quote.askSize < 0)) throw new Error("Invalid ask size");
+  if (quote.last !== undefined && (!Number.isFinite(quote.last) || quote.last <= 0)) throw new Error("Invalid last trade price");
 }
 
 export function appendBar(history: readonly Bar[], bar: Bar): Bar[] {

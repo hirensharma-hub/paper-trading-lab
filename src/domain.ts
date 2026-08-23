@@ -23,6 +23,8 @@ export interface Quote {
   last?: number;
 }
 
+export interface EquityObservation { ts: number; value: number; }
+
 export interface MarketMark { symbol: string; price: number; ts: number; }
 
 export interface DataEntitlement {

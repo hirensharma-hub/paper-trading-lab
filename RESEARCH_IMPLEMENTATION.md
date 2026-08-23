@@ -29,4 +29,7 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | Calibration/OOD | Model diagnostics | Reliability bins, log loss/Brier metrics and simple z-score OOD checks | IMPLEMENTED |
 | Historical analogues | Non-parametric context | Nearest-neighbour forward-return/regime/MFE/MAE summary with sample-size evidence | IMPLEMENTED |
 | Evidence quality | Research governance | Transparent weighted score across sample size, OOS, calibration, costs and stability | IMPLEMENTED |
+| Integrated intelligence | Point-in-time decision pipeline | Features, confirmed structure, regimes, patterns, model/OOD, analogues, EV and evidence gates | PARTIAL |
+| Prediction resolution | Experience research | Delayed forward return, label, MFE and MAE resolution | IMPLEMENTED |
+| Model lifecycle | Controlled learning | Candidate/active/rejected registry with OOS threshold promotion | PARTIAL |
 | Trading Mastery | Structured reference | Initial linked entries; broad topic expansion remains | PARTIAL |
