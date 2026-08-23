@@ -14,7 +14,7 @@ V1 foundation for a quantitative research and paper-trading platform. The tradin
 
 `src/domain.ts` contains canonical bars, quotes, features, orders and fills. `src/features.ts` implements auditable price/volume features. `src/strategy.ts` provides a deterministic EMA baseline. `src/risk.ts` applies position, exposure, loss, drawdown, rate and kill-switch controls. `src/broker.ts` simulates executable bid/ask fills, configurable slippage and fees, and reconstructable positions. `src/engine.ts` composes the event path.
 
-`extension/` is a Manifest V3 shell only; the UI files are intentionally not generated until the engine API contract and security review are complete.
+`extension/` contains a loadable Manifest V3 demo. It has a popup dashboard and a display-only overlay for TradingView. The demo state is stored in extension storage and is not connected to market data or a broker. The overlay never reads chart values or clicks TradingView controls.
 
 ## Development
 
@@ -24,6 +24,15 @@ From this directory:
 npm run typecheck
 npm test
 ```
+
+## Try the Chrome extension
+
+1. Download the repository from GitHub or clone it temporarily.
+2. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the `extension/` folder.
+3. Open any `tradingview.com` chart. The overlay appears in the top-right corner.
+4. Click the extension icon for the popup dashboard. Use **Pause engine** and **Reset demo** to test the controls.
+
+This is an intentionally safe demo UI. It does not consume TradingView prices, submit orders, or represent live performance. The next integration step is connecting the overlay to the separately running local TypeScript engine API.
 
 The current root repository has unrelated work and an origin for a different application. Keep this directory isolated until a dedicated GitHub repository URL is supplied. Recommended next step:
 

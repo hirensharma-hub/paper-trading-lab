@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Paper Trading Lab Overlay",
   "version": "0.1.0",
-  "description": "Display-only research overlay. It never scrapes TradingView data or submits orders.",
+  "description": "Display-only paper-trading dashboard. It never scrapes TradingView data or submits orders.",
   "permissions": ["storage"],
   "host_permissions": ["http://localhost:8787/*"],
   "background": { "service_worker": "service-worker.js", "type": "module" },
@@ -11,5 +11,5 @@
     "js": ["overlay.js"],
     "run_at": "document_idle"
   }],
-  "action": { "default_title": "Paper Trading Lab" }
+  "action": { "default_title": "Paper Trading Lab", "default_popup": "popup.html" }
 }
