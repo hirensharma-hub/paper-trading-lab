@@ -30,6 +30,8 @@ The test suite is intentionally focused on correctness: known indicator values, 
 
 The research core also exposes provider-independent file/in-memory market-data interfaces, a CSV OHLCV importer with a quality report, a timezone-aware regular-session calendar, and a small linked Trading Mastery knowledge base.
 
+Replay reconstructs closed trades from broker fills and reports equity snapshots, fees, net P/L, holding periods and MFE/MAE. Research utilities include triple-barrier targets, purged/walk-forward splits, descriptive statistics and expected value.
+
 ## Try the Chrome extension
 
 1. Download the repository from GitHub or clone it temporarily.

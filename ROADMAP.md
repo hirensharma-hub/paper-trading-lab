@@ -18,6 +18,8 @@
 - [ ] JSON/fixture provider parity and corporate-action metadata
 - [ ] SQLite ledger and reproducible experiment metadata
 - [x] Typed in-memory event, experiment and hypothesis repositories
+- [x] Fill-derived closed-trade ledger and replay metrics
+- [x] Triple-barrier targets, walk-forward folds and statistical utilities
 - [ ] Walk-forward and rolling-window backtests
 - [ ] Cost stress tests, benchmarks and trade attribution
 

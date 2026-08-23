@@ -14,6 +14,9 @@ import { detectMarketStructure } from "../src/structure";
 import { classifyRegime } from "../src/regime";
 import { detectPatterns } from "../src/patterns";
 import { InMemoryEventRepository, InMemoryExperimentRepository } from "../src/research-ledger";
+import { replay } from "../src/backtest";
+import { generateWalkForwardSplits, tripleBarrierTarget } from "../src/research";
+import { correlation, expectedValue, mean, quantile, standardDeviation } from "../src/statistics";
 
 const bar = (symbol: string, i: number, close = 100 + i) => ({ symbol, startMs: i * 60_000, intervalMs: 60_000, open: close, high: close + 1, low: close - 1, close, volume: 100 + i });
 const order = (id: string, side: "BUY" | "SELL" = "BUY", quantity = 10, limitPrice?: number) => ({ id, symbol: "SPY", side, type: limitPrice === undefined ? "MARKET" as const : "LIMIT" as const, quantity, limitPrice, status: "NEW" as const, strategyId: "test", strategyVersion: "1", reason: "unit test", fills: [] });
@@ -157,4 +160,32 @@ test("calendar holiday/early-close provider and research modules are determinist
   const experiments = new InMemoryExperimentRepository();
   experiments.save({ experimentId: "exp-1", datasetId: "file", datasetVersion: "1", symbols: ["SPY"], timeframe: "1m", featureVersions: ["baseline"], strategyVersion: "ema-1", parameters: {}, costs: { feeBps: 1, slippageBps: 1 }, createdAt: 1 });
   assert.equal(experiments.all().length, 1);
+});
+
+test("triple barriers, walk-forward splits and statistical utilities are explicit", () => {
+  const bars = [bar("SPY", 0, 100), { ...bar("SPY", 1, 101), high: 103, low: 99 }, { ...bar("SPY", 2, 102), high: 104, low: 100 }];
+  const target = tripleBarrierTarget(bars, 0, 1, 2, 2, 2);
+  assert.equal(target?.label, "UP");
+  const ambiguous = tripleBarrierTarget([{ ...bar("SPY", 0, 100) }, { ...bar("SPY", 1, 101), high: 103, low: 97 }], 0, 1, 2, 2, 1);
+  assert.equal(ambiguous?.label, "AMBIGUOUS");
+  const folds = generateWalkForwardSplits(30, { trainBars: 10, validationBars: 5, testBars: 5, stepBars: 5, targetHorizon: 2, embargoBars: 1 });
+  assert.equal(folds.length, 2);
+  assert.ok(folds.every((fold) => Math.max(...fold.train) < Math.min(...fold.validation)));
+  assert.equal(mean([1, 2, 3]), 2);
+  assert.equal(quantile([1, 2, 3, 4], 0.5), 2.5);
+  assert.ok(Math.abs(standardDeviation([1, 2, 3]) - 1) < 1e-12);
+  assert.equal(correlation([1, 2, 3], [2, 4, 6]), 1);
+  assert.equal(expectedValue(0.4, 60, 20), 12);
+});
+
+test("replay produces closed trades from broker fills", () => {
+  const broker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 });
+  const strategy = { id: "test-enter-exit", version: "1", evaluate: ({ position }: { position: unknown }) => position ? { action: "EXIT" as const, reason: "test exit" } : { action: "ENTER_LONG" as const, reason: "test entry" } };
+  const engine = new ResearchEngine(strategy, broker, new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 }));
+  const events = Array.from({ length: 22 }, (_, i) => ({ bar: bar("SPY", i, 100 + i), quote: { symbol: "SPY", ts: (i + 1) * 60_000 + 1, bid: 100 + i, ask: 100.1 + i, last: 100.05 + i } }));
+  const result = replay(events, engine);
+  assert.ok(result.equity.length > 1);
+  assert.ok(result.trades.length >= 1);
+  assert.ok(result.snapshots.every((snapshot) => Number.isFinite(snapshot.equity)));
+  assert.ok(result.trades.every((trade) => trade.netPnl === trade.grossPnl - trade.entryFees - trade.exitFees));
 });

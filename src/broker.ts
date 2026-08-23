@@ -19,6 +19,7 @@ export class PaperBroker {
   get balance() { return this.cash; }
   get openPositions(): Position[] { return [...this.positions.values()].map((p) => ({ ...p })); }
   get allOrders(): PaperOrder[] { return [...this.orders.values()].map((o) => structuredClone(o)); }
+  get allFills(): Fill[] { return [...this.orders.values()].flatMap((order) => order.fills.map((fill) => structuredClone(fill))); }
   get realisedPnl() { return this.realisedPnlTotal; }
   get feesPaid() { return this.feesPaidTotal; }
 

@@ -109,6 +109,29 @@ export interface PortfolioSnapshot {
   highWaterMark: number;
 }
 
+export interface ClosedTrade {
+  tradeId: string;
+  symbol: string;
+  strategyId: string;
+  strategyVersion: string;
+  entryTimestamp: number;
+  exitTimestamp: number;
+  entryPrice: number;
+  exitPrice: number;
+  quantity: number;
+  grossPnl: number;
+  entryFees: number;
+  exitFees: number;
+  netPnl: number;
+  holdingPeriodMs: number;
+  entryRegime?: string;
+  exitRegime?: string;
+  entryPatterns?: readonly string[];
+  exitPatterns?: readonly string[];
+  mfePerShare?: number;
+  maePerShare?: number;
+}
+
 export type DataQualityIssueCode = "INVALID_OHLC" | "INVALID_VOLUME" | "INVALID_TIMESTAMP" | "DUPLICATE_BAR" | "TIME_GAP" | "MISSING_FIELD" | "INVALID_INTERVAL";
 export interface DataQualityIssue { row: number; code: DataQualityIssueCode; message: string; }
 export interface DataQualityReport { totalRows: number; acceptedRows: number; rejectedRows: number; duplicates: number; timeGaps: number; invalidOhlc: number; invalidVolume: number; invalidTimestampRows: number; invalidIntervalRows: number; missingFieldRows: number; globalStart?: number; globalEnd?: number; start?: number; end?: number; symbols: readonly string[]; issues: readonly DataQualityIssue[]; }

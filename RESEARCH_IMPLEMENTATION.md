@@ -17,5 +17,9 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | CSV data quality | Data-quality research | Provider-independent CSV importer and quality report | IMPLEMENTED |
 | Experiments/hypotheses | Research methodology | Typed metadata and in-memory repositories | PARTIAL |
 | Event audit trail | Reproducibility research | Append-only in-memory event repository | PARTIAL |
+| Closed trades | Execution research | Fill-derived ledger with fees, holding time and MFE/MAE | IMPLEMENTED |
+| Triple barriers | Prediction targets | UP/DOWN/TIMEOUT/AMBIGUOUS target generator | IMPLEMENTED |
+| Walk-forward validation | Time-series validation | Reusable fold generator with embargo/horizon gaps | IMPLEMENTED |
+| Statistical toolkit | Probability/statistics | Mean, variance, quantiles, correlation, CI and EV | IMPLEMENTED |
 | Machine learning | ML research | Targets/splits only; no active trained model yet | PLANNED |
 | Trading Mastery | Structured reference | Initial linked entries; broad topic expansion remains | PARTIAL |

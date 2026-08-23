@@ -4,7 +4,7 @@ Updated: 2026-08-23
 
 ## Current phase
 
-Phase 1 — core correctness and reproducible research foundation; Phase 2 intelligence primitives are underway.
+Phase 2 — research infrastructure and intelligence primitives; persistence and ML are not yet active.
 
 ## Architecture
 
@@ -24,6 +24,8 @@ Phase 1 — core correctness and reproducible research foundation; Phase 2 intel
 - `src/regime.ts`: rule-based trend and volatility regime classifier.
 - `src/patterns.ts`: measurable breakout, deviation and volatility evidence patterns.
 - `src/research-ledger.ts`: append-only event repository plus experiment/hypothesis records.
+- `src/trades.ts`: fill-derived long-only closed-trade ledger with fee allocation and MFE/MAE.
+- `src/statistics.ts`: descriptive statistics, correlation, confidence interval and expected-value utilities.
 - `src/backtest.ts`: deterministic replay using the same engine and broker interfaces.
 - `extension/`: lightweight MV3 display-only demo popup/overlay. It does not scrape TradingView or submit orders.
 
@@ -39,6 +41,8 @@ Phase 1 — core correctness and reproducible research foundation; Phase 2 intel
 - Corrected market-order affordability to use slipped fill prices plus fees.
 - Added broker entry-fee allocation for net realized P/L.
 - Added holiday/early-close provider hooks and CI verification workflow.
+- Upgraded replay to produce portfolio snapshots, closed trades and performance metrics.
+- Added triple-barrier targets, ambiguity handling and walk-forward split generation.
 - Removed the hard-coded one-minute volatility annualisation assumption.
 - Removed the invented strategy confidence value.
 - Added reproducible TypeScript tooling declarations.
@@ -49,7 +53,7 @@ Phase 1 — core correctness and reproducible research foundation; Phase 2 intel
 - No licensed market-data adapter or local HTTP engine service exists yet; the current provider is file/in-memory only.
 - SQLite/IndexedDB persistence, append-only event audit storage and a full UI/API contract remain future work.
 - Stop orders, cancellation, richer partial-fill queue models and shorting/leverage are not implemented.
-- Backtest replay currently requires normalized bar+quote events and exposes basic equity only.
+- Backtest replay requires normalized bar+quote events and now exposes snapshots, closed trades and metrics; durable persistence remains planned.
 - No ML model is active; this is intentional until the research/backtest foundation is independently validated.
 - Market structure, pattern, regime, event and experiment modules are initial primitives, not a complete platform.
 - TypeScript tests require `npm install` before `npm run typecheck` or `npm test`.
