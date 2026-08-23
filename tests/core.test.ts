@@ -8,8 +8,12 @@ import { maximumDrawdown, performanceMetrics } from "../src/metrics";
 import { chronologicalSplit, forwardReturnTarget, purgedChronologicalSplit, assertNoLookahead } from "../src/research";
 import { EmaCrossStrategy } from "../src/strategy";
 import { ResearchEngine } from "../src/engine";
-import { TradingCalendar } from "../src/calendar";
+import { ConfiguredHolidayProvider, TradingCalendar } from "../src/calendar";
 import { parseCsvBars } from "../src/market-data";
+import { detectMarketStructure } from "../src/structure";
+import { classifyRegime } from "../src/regime";
+import { detectPatterns } from "../src/patterns";
+import { InMemoryEventRepository, InMemoryExperimentRepository } from "../src/research-ledger";
 
 const bar = (symbol: string, i: number, close = 100 + i) => ({ symbol, startMs: i * 60_000, intervalMs: 60_000, open: close, high: close + 1, low: close - 1, close, volume: 100 + i });
 const order = (id: string, side: "BUY" | "SELL" = "BUY", quantity = 10, limitPrice?: number) => ({ id, symbol: "SPY", side, type: limitPrice === undefined ? "MARKET" as const : "LIMIT" as const, quantity, limitPrice, status: "NEW" as const, strategyId: "test", strategyVersion: "1", reason: "unit test", fills: [] });
@@ -50,7 +54,7 @@ test("risk manager enforces kill switch, losses, exposure and allows a close", (
   assert.deepEqual(risk.size(intent, 10, base), { allowed: true, quantity: 10 });
   assert.equal(risk.size(intent, 10, { ...base, equity: 89 }).allowed, false);
   assert.equal(risk.size(intent, 10, { ...base, killSwitch: true }).allowed, false);
-  assert.equal(risk.size({ ...intent, side: "SELL" }, 10, { ...base, openPositions: [{ symbol: "SPY", quantity: 10, averagePrice: 10, realisedPnl: 0 }] }).allowed, true);
+  assert.equal(risk.size({ ...intent, side: "SELL" }, 10, { ...base, openPositions: [{ symbol: "SPY", quantity: 10, averagePrice: 10, realisedPnl: 0, entryFees: 0 }] }).allowed, true);
 });
 
 test("metrics and leakage-safe targets use chronological data", () => {
@@ -74,7 +78,7 @@ test("metrics and leakage-safe targets use chronological data", () => {
 
 test("risk uses the mark for each symbol rather than one current price", () => {
   const risk = new RiskManager({ maxPositionValue: 20_000, maxGrossExposure: 9_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 });
-  const state = { equity: 20_000, dayStartEquity: 20_000, highWaterMark: 20_000, openPositions: [{ symbol: "SPY", quantity: 10, averagePrice: 500, realisedPnl: 0 }, { symbol: "AAPL", quantity: 20, averagePrice: 200, realisedPnl: 0 }], ordersInLastMinute: 0, killSwitch: false, marks: { SPY: 500, AAPL: 200 } };
+  const state = { equity: 20_000, dayStartEquity: 20_000, highWaterMark: 20_000, openPositions: [{ symbol: "SPY", quantity: 10, averagePrice: 500, realisedPnl: 0, entryFees: 0 }, { symbol: "AAPL", quantity: 20, averagePrice: 200, realisedPnl: 0, entryFees: 0 }], ordersInLastMinute: 0, killSwitch: false, marks: { SPY: 500, AAPL: 200 } };
   const result = risk.size({ ...order("risk"), quantity: 1, submittedAt: 1 }, 200, state);
   assert.equal(result.allowed, false);
   if (!result.allowed) assert.match(result.reason, /Exposure/);
@@ -92,6 +96,20 @@ test("broker enforces long-only selling and reconciles round-trip fees", () => {
   assert.equal(broker.openPositions.length, 0);
   assert.ok(Math.abs(broker.feesPaid - 1.05) < 1e-9);
   assert.ok(Math.abs(broker.balance - 1_048.95) < 1e-9);
+});
+
+test("broker affordability includes extreme market slippage and risk caps final symbol value", () => {
+  const broker = new PaperBroker({ initialCash: 1_000, feeBps: 10, slippageBps: 2_000 });
+  broker.submit(order("slipped-buy", "BUY", 20));
+  broker.onQuote({ symbol: "SPY", ts: 1, bid: 99, ask: 100 });
+  assert.equal(broker.openPositions[0].quantity, 8);
+  assert.ok(broker.balance >= 0);
+  const risk = new RiskManager({ maxPositionValue: 10_000, maxGrossExposure: 50_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 });
+  const existing = { symbol: "SPY", quantity: 90, averagePrice: 100, realisedPnl: 0, entryFees: 0 };
+  const buy = risk.size({ ...order("cap"), quantity: 20, submittedAt: 1 }, 100, { equity: 50_000, dayStartEquity: 50_000, highWaterMark: 50_000, openPositions: [existing], ordersInLastMinute: 0, killSwitch: false, marks: { SPY: 100 } });
+  assert.deepEqual(buy, { allowed: true, quantity: 10 });
+  const close = risk.size({ ...order("close", "SELL", 90), submittedAt: 1 }, 100, { equity: 50_000, dayStartEquity: 50_000, highWaterMark: 50_000, openPositions: [{ ...existing, quantity: 120 }], ordersInLastMinute: 0, killSwitch: false, marks: { SPY: 100 } });
+  assert.deepEqual(close, { allowed: true, quantity: 90 });
 });
 
 test("engine keeps independent symbol histories and per-symbol marks", () => {
@@ -116,5 +134,27 @@ test("session calendar handles regular hours and CSV quality reporting", () => {
   const parsed = parseCsvBars(csv);
   assert.equal(parsed.report.acceptedRows, 1);
   assert.equal(parsed.report.duplicates, 1);
-  assert.equal(parsed.report.rejectedRows, 1);
+  assert.equal(parsed.report.rejectedRows, 2);
+});
+
+test("calendar holiday/early-close provider and research modules are deterministic", () => {
+  const holidays = new ConfiguredHolidayProvider(["2026-07-03"], { "2026-11-27": 13 * 60 });
+  const calendar = new TradingCalendar({}, holidays);
+  assert.equal(calendar.isTradingDay(Date.parse("2026-07-03T15:00:00Z")), false);
+  assert.equal(calendar.sessionClose(Date.parse("2026-11-27T15:00:00Z")), 780);
+  const bars = Array.from({ length: 25 }, (_, i) => bar("SPY", i, 100 + Math.sin(i / 2) * 3 + i * 0.1));
+  const structure = detectMarketStructure(bars, { pivotRadius: 1 });
+  assert.ok(structure);
+  const features = buildFeatures(bars, { symbol: "SPY", ts: 25 * 60_000, bid: 102, ask: 102.1 });
+  assert.ok(features);
+  const regime = classifyRegime(features!, structure);
+  assert.equal(regime.symbol, "SPY");
+  assert.ok(detectPatterns(features!, structure, regime).every((pattern) => pattern.symbol === "SPY"));
+  const events = new InMemoryEventRepository();
+  events.append({ id: "1", timestamp: 1, eventType: "MARKET_BAR_ACCEPTED", component: "test", version: "1", payload: {} });
+  assert.throws(() => events.append({ id: "1", timestamp: 2, eventType: "QUOTE_ACCEPTED", component: "test", version: "1", payload: {} }));
+  assert.equal(events.byType("MARKET_BAR_ACCEPTED").length, 1);
+  const experiments = new InMemoryExperimentRepository();
+  experiments.save({ experimentId: "exp-1", datasetId: "file", datasetVersion: "1", symbols: ["SPY"], timeframe: "1m", featureVersions: ["baseline"], strategyVersion: "ema-1", parameters: {}, costs: { feeBps: 1, slippageBps: 1 }, createdAt: 1 });
+  assert.equal(experiments.all().length, 1);
 });

@@ -59,6 +59,7 @@ export interface Position {
   quantity: number;
   averagePrice: number;
   realisedPnl: number;
+  entryFees: number;
 }
 
 export interface Fill {
@@ -108,4 +109,6 @@ export interface PortfolioSnapshot {
   highWaterMark: number;
 }
 
-export interface DataQualityReport { totalRows: number; acceptedRows: number; rejectedRows: number; duplicates: number; timeGaps: number; invalidOhlc: number; invalidVolume: number; start?: number; end?: number; symbols: readonly string[]; }
+export type DataQualityIssueCode = "INVALID_OHLC" | "INVALID_VOLUME" | "INVALID_TIMESTAMP" | "DUPLICATE_BAR" | "TIME_GAP" | "MISSING_FIELD" | "INVALID_INTERVAL";
+export interface DataQualityIssue { row: number; code: DataQualityIssueCode; message: string; }
+export interface DataQualityReport { totalRows: number; acceptedRows: number; rejectedRows: number; duplicates: number; timeGaps: number; invalidOhlc: number; invalidVolume: number; invalidTimestampRows: number; invalidIntervalRows: number; missingFieldRows: number; globalStart?: number; globalEnd?: number; start?: number; end?: number; symbols: readonly string[]; issues: readonly DataQualityIssue[]; }

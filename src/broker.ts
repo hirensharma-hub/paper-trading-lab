@@ -51,8 +51,9 @@ export class PaperBroker {
       const liquidityQuantity = displayedSize === undefined ? remaining : Math.max(0, Math.floor(displayedSize));
       let fillQuantity = Math.min(remaining, liquidityQuantity || (displayedSize === undefined ? remaining : 0));
       if (order.side === "SELL") fillQuantity = Math.min(fillQuantity, existingPosition);
+      const estimatedPrice = executable * (order.type === "MARKET" ? 1 + (order.side === "BUY" ? 1 : -1) * this.config.slippageBps / 10_000 : 1);
       if (order.side === "BUY" && fillQuantity > 0) {
-        const affordable = Math.floor(this.cash / (executable * (1 + this.config.feeBps / 10_000)));
+        const affordable = Math.floor(this.cash / (estimatedPrice * (1 + this.config.feeBps / 10_000)));
         fillQuantity = Math.min(fillQuantity, affordable);
       }
       if (fillQuantity <= 0) {
@@ -78,15 +79,18 @@ export class PaperBroker {
 
   private applyFill(order: PaperOrder, fill: Fill) {
     const signedQuantity = order.side === "BUY" ? fill.quantity : -fill.quantity;
-    const old = this.positions.get(order.symbol) ?? { symbol: order.symbol, quantity: 0, averagePrice: 0, realisedPnl: 0 };
+    const old = this.positions.get(order.symbol) ?? { symbol: order.symbol, quantity: 0, averagePrice: 0, realisedPnl: 0, entryFees: 0 };
     const nextQuantity = old.quantity + signedQuantity;
     if (old.quantity !== 0 && Math.sign(old.quantity) !== Math.sign(nextQuantity) && nextQuantity !== 0) throw new Error("Shorting/reversal is disabled in V1");
     const closing = old.quantity !== 0 && Math.sign(old.quantity) !== Math.sign(signedQuantity);
-    const realisedPnl = closing ? old.realisedPnl + (fill.price - old.averagePrice) * Math.min(Math.abs(old.quantity), fill.quantity) * Math.sign(old.quantity) - fill.fee : old.realisedPnl;
-    if (closing) this.realisedPnlTotal += realisedPnl - old.realisedPnl;
+    const closedQuantity = closing ? Math.min(Math.abs(old.quantity), fill.quantity) : 0;
+    const allocatedEntryFees = closing && old.quantity > 0 ? old.entryFees * (closedQuantity / old.quantity) : 0;
+    const netTradePnl = closing ? (fill.price - old.averagePrice) * closedQuantity - allocatedEntryFees - fill.fee : 0;
+    const realisedPnl = closing ? old.realisedPnl + netTradePnl : old.realisedPnl;
+    if (closing) this.realisedPnlTotal += netTradePnl;
     this.feesPaidTotal += fill.fee;
     this.cash += order.side === "BUY" ? -(fill.price * fill.quantity + fill.fee) : fill.price * fill.quantity - fill.fee;
     if (nextQuantity === 0) this.positions.delete(order.symbol);
-    else this.positions.set(order.symbol, { symbol: order.symbol, quantity: nextQuantity, averagePrice: closing ? old.averagePrice : (old.averagePrice * old.quantity + fill.price * signedQuantity) / nextQuantity, realisedPnl });
+    else this.positions.set(order.symbol, { symbol: order.symbol, quantity: nextQuantity, averagePrice: closing ? old.averagePrice : (old.averagePrice * old.quantity + fill.price * signedQuantity) / nextQuantity, realisedPnl, entryFees: closing ? old.entryFees - allocatedEntryFees : old.entryFees + fill.fee });
   }
 }

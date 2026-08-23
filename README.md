@@ -41,6 +41,8 @@ This is an intentionally safe demo UI. It does not consume TradingView prices, s
 
 See [PROJECT_STATE.md](PROJECT_STATE.md) for the current implementation boundary and [ROADMAP.md](ROADMAP.md) for planned research phases.
 
+See [RESEARCH_IMPLEMENTATION.md](RESEARCH_IMPLEMENTATION.md) for a topic-by-topic mapping from the research specification to executable code and remaining work.
+
 ## Research discipline
 
 Every experiment should record dataset version, point-in-time feature policy, strategy/version, cost model, parameters, random seed, in-sample/validation/out-of-sample ranges and all tested configurations. A candidate model may only replace an active model after time-ordered validation and forward paper evidence show a robust improvement after costs.

@@ -2,7 +2,7 @@ import type { Bar, Quote } from "./domain";
 
 export function validateBar(bar: Bar): void {
   if (!bar.symbol || !Number.isInteger(bar.startMs) || bar.intervalMs <= 0) throw new Error("Invalid bar identity or interval");
-  if (![bar.open, bar.high, bar.low, bar.close, bar.volume].every(Number.isFinite) || bar.volume < 0) throw new Error("Invalid bar values");
+  if (![bar.open, bar.high, bar.low, bar.close, bar.volume].every(Number.isFinite) || [bar.open, bar.high, bar.low, bar.close].some((value) => value <= 0) || bar.volume < 0) throw new Error("Invalid bar values");
   if (bar.high < Math.max(bar.open, bar.close) || bar.low > Math.min(bar.open, bar.close) || bar.low > bar.high) throw new Error("OHLC bounds are inconsistent");
 }
 

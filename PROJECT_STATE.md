@@ -4,7 +4,7 @@ Updated: 2026-08-23
 
 ## Current phase
 
-Phase 1 — core correctness and reproducible research foundation, with the first data/research utilities.
+Phase 1 — core correctness and reproducible research foundation; Phase 2 intelligence primitives are underway.
 
 ## Architecture
 
@@ -20,6 +20,10 @@ Phase 1 — core correctness and reproducible research foundation, with the firs
 - `src/research.ts`: forward-return targets and chronological train/validation/test splits.
 - `src/market-data.ts`: provider interfaces, in-memory provider, CSV OHLCV parser and quality report.
 - `src/knowledge/index.ts`: paraphrased, linked Trading Mastery reference entries.
+- `src/structure.ts`: deterministic swing, range and higher-high/lower-low structure.
+- `src/regime.ts`: rule-based trend and volatility regime classifier.
+- `src/patterns.ts`: measurable breakout, deviation and volatility evidence patterns.
+- `src/research-ledger.ts`: append-only event repository plus experiment/hypothesis records.
 - `src/backtest.ts`: deterministic replay using the same engine and broker interfaces.
 - `extension/`: lightweight MV3 display-only demo popup/overlay. It does not scrape TradingView or submit orders.
 
@@ -31,6 +35,10 @@ Phase 1 — core correctness and reproducible research foundation, with the firs
 - Added purged chronological splits and explicit feature/decision/target timestamps.
 - Enforced long-only selling, affordability after slippage/fees, cumulative fee accounting and session-aware daily-risk resets.
 - Added provider-independent CSV import and initial structured knowledge entries linked to code modules.
+- Added per-symbol final-position caps and risk-reducing exits above exposure caps.
+- Corrected market-order affordability to use slipped fill prices plus fees.
+- Added broker entry-fee allocation for net realized P/L.
+- Added holiday/early-close provider hooks and CI verification workflow.
 - Removed the hard-coded one-minute volatility annualisation assumption.
 - Removed the invented strategy confidence value.
 - Added reproducible TypeScript tooling declarations.
@@ -43,6 +51,7 @@ Phase 1 — core correctness and reproducible research foundation, with the firs
 - Stop orders, cancellation, richer partial-fill queue models and shorting/leverage are not implemented.
 - Backtest replay currently requires normalized bar+quote events and exposes basic equity only.
 - No ML model is active; this is intentional until the research/backtest foundation is independently validated.
+- Market structure, pattern, regime, event and experiment modules are initial primitives, not a complete platform.
 - TypeScript tests require `npm install` before `npm run typecheck` or `npm test`.
 
 ## Safety status

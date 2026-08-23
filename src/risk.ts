@@ -34,12 +34,17 @@ export class RiskManager {
     const missingMark = state.openPositions.find((p) => !Number.isFinite(marks[p.symbol]) || marks[p.symbol] <= 0);
     if (missingMark) return { allowed: false, reason: `Missing mark for ${missingMark.symbol}` };
     const currentGross = state.openPositions.reduce((sum, p) => sum + Math.abs(p.quantity * marks[p.symbol]), 0);
-    const reducingQuantity = intent.side === "SELL"
-      ? state.openPositions.find((p) => p.symbol === intent.symbol)?.quantity ?? 0
-      : 0;
-    // Closing an existing long must remain possible even when exposure is at its cap.
-    const headroom = Math.min(this.config.maxPositionValue, Math.max(0, this.config.maxGrossExposure - currentGross) + reducingQuantity * marks[intent.symbol]);
-    const quantity = Math.floor(Math.min(intent.quantity, headroom / referencePrice, reducingQuantity || Number.POSITIVE_INFINITY));
+    const existingQuantity = state.openPositions.find((p) => p.symbol === intent.symbol)?.quantity ?? 0;
+    if (intent.side === "SELL") {
+      // Exits reduce risk and are allowed even when an existing position is already above a cap.
+      const quantity = Math.floor(Math.min(intent.quantity, existingQuantity));
+      return quantity > 0 ? { allowed: true, quantity } : { allowed: false, reason: "No long position to reduce" };
+    }
+    const currentSymbolExposure = existingQuantity * marks[intent.symbol];
+    const symbolCapacity = Math.max(0, this.config.maxPositionValue - currentSymbolExposure);
+    const grossCapacity = Math.max(0, this.config.maxGrossExposure - currentGross);
+    const headroom = Math.min(symbolCapacity, grossCapacity);
+    const quantity = Math.floor(Math.min(intent.quantity, headroom / referencePrice));
     return quantity > 0 ? { allowed: true, quantity } : { allowed: false, reason: "Exposure limit leaves no order capacity" };
   }
 }
