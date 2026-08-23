@@ -32,4 +32,11 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | Integrated intelligence | Point-in-time decision pipeline | Features, confirmed structure, regimes, patterns, model/OOD, analogues, EV and evidence gates | PARTIAL |
 | Prediction resolution | Experience research | Delayed forward return, label, MFE and MAE resolution | IMPLEMENTED |
 | Model lifecycle | Controlled learning | Candidate/active/rejected registry with OOS threshold promotion | PARTIAL |
+| Evidence gating | Research governance | Explicit validation/calibration/cost/stability inputs; weak evidence forces NO_TRADE | IMPLEMENTED |
+| Analogue normalization | Similarity research | Optional train-fitted scaler and as-of/regime filtering before nearest-neighbour ranking | PARTIAL |
+| Target registry | Target governance | Versioned target contract for prediction creation and resolution | IMPLEMENTED |
+| Prediction queue | Experience research | Pending predictions resolve only when target horizon is available | IMPLEMENTED |
+| Model artifact | Reproducibility | Logistic weights bundled with scaler, feature version and target version | PARTIAL |
+| Experience persistence | Paper experience | JSONL pending/resolved prediction and model-artifact repositories | PARTIAL |
+| Decision policy | Safe decisioning | Evidence-quality and OOD policy can force NO_TRADE | IMPLEMENTED |
 | Trading Mastery | Structured reference | Initial linked entries; broad topic expansion remains | PARTIAL |

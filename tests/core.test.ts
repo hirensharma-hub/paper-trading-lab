@@ -30,6 +30,11 @@ import { TradeLedger } from "../src/trades";
 import { IntelligenceEngine } from "../src/intelligence";
 import { resolvePrediction } from "../src/experience";
 import { ModelRegistry } from "../src/model-registry";
+import { PredictionQueue } from "../src/experience";
+import { LogisticModelBundle, type ModelArtifact } from "../src/ml";
+import { DecisionEngine } from "../src/decision";
+import { TargetRegistry } from "../src/targets";
+import { JsonlExperienceRepository, JsonModelArtifactRepository, JsonPredictionQueueRepository } from "../src/persistence";
 
 const bar = (symbol: string, i: number, close = 100 + i) => ({ symbol, startMs: i * 60_000, intervalMs: 60_000, open: close, high: close + 1, low: close - 1, close, volume: 100 + i });
 const order = (id: string, side: "BUY" | "SELL" = "BUY", quantity = 10, limitPrice?: number) => ({ id, symbol: "SPY", side, type: limitPrice === undefined ? "MARKET" as const : "LIMIT" as const, quantity, limitPrice, status: "NEW" as const, strategyId: "test", strategyVersion: "1", reason: "unit test", fills: [] });
@@ -283,12 +288,30 @@ test("metrics, intelligence, prediction resolution and model registry are integr
   assert.ok(Math.abs(performanceMetrics([{ ts: 0, value: 100 }, { ts: year, value: 110 }]).cagr - 0.1) < 1e-9);
   const model = { predictProbability: () => 0.9 };
   const observations = Array.from({ length: 25 }, () => ({ features: Array(9).fill(0), forwardReturn: 0.1, regime: "UPTREND", mfe: 0.1, mae: -0.01 }));
-  const intelligence = new IntelligenceEngine({ model, analogues: observations, minimumAnalogueSample: 20 });
+  const intelligence = new IntelligenceEngine({ model, analogues: observations, minimumAnalogueSample: 20, evidence: { outOfSample: true, calibrated: true, costSurvives: true, parameterStable: true, recentStable: true } });
   let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined;
   for (let i = 0; i < 20; i++) snapshot = intelligence.analyze(bar("SPY", i));
   assert.equal(snapshot?.decision, "BUY"); assert.ok(snapshot?.evidence); assert.ok(snapshot?.expectedValue! > 0);
-  const prediction = resolvePrediction({ predictionId: "p1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 2, probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 20, 100), bar("SPY", 21, 105), bar("SPY", 22, 110)]);
+  const prediction = resolvePrediction({ predictionId: "p1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 2, targetVersion: "forward-close-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 19, 100), bar("SPY", 20, 100), bar("SPY", 21, 105), bar("SPY", 22, 110)]);
   assert.equal(prediction?.resolved.label, "WIN"); assert.ok(Math.abs(prediction!.resolved.maxFavorableExcursion - 0.06) < 1e-12);
   const registry = new ModelRegistry(); registry.register({ modelId: "m1", version: "1", algorithm: "logistic", featureVersion: "f1", datasetVersion: "d1", metrics: { outOfSampleScore: 0.7 }, lifecycle: "CANDIDATE", createdAt: 1 });
   assert.equal(registry.promote("m1", 0.6).lifecycle, "ACTIVE");
+});
+
+test("analogue and evidence gates are time-safe and do not invent validation", () => {
+  const observations = [{ features: [0, 100], forwardReturn: 0.1, decisionTimestamp: 10, regime: "UPTREND" }, { features: [0, 1], forwardReturn: -0.1, decisionTimestamp: 30, regime: "RANGE" }];
+  const result = nearestAnalogues([0, 1], observations, 10, 1, { asOfTimestamp: 20, requiredRegime: "UPTREND", scaler: { means: [0, 50], scales: [1, 50], fittedRows: 2 } });
+  assert.equal(result.sampleSize, 1); assert.equal(result.meanForwardReturn, 0.1);
+  const cautious = new IntelligenceEngine({ model: { predictProbability: () => 0.99 }, analogues: Array.from({ length: 25 }, () => ({ features: Array(9).fill(0), forwardReturn: 0.1, regime: "UPTREND" })) });
+  let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined; for (let i = 0; i < 20; i++) snapshot = cautious.analyze(bar("SPY", i));
+  assert.equal(snapshot?.decision, "NO_TRADE"); assert.equal(snapshot?.evidence?.components.outOfSample, 0); assert.equal(snapshot?.evidence?.components.costSurvives, 0);
+});
+
+test("model bundles, decision policy, target registry, queue and durable artifacts are reproducible", () => {
+  const artifact: ModelArtifact = { artifactId: "a1", algorithm: "logistic-regression", featureVersion: "f1", targetVersion: "forward-close-v1", scaler: { means: [1], scales: [2], fittedRows: 4 }, model: { weights: [1], bias: 0 }, createdAt: 1 };
+  const bundle = new LogisticModelBundle(artifact); assert.ok(bundle.predictProbability([3]) > 0.5); assert.equal(bundle.metadata().targetVersion, "forward-close-v1");
+  const decision = new DecisionEngine({ minimumEvidence: "MODERATE" }).decide({ symbol: "SPY", timestamp: 1, features: null, structure: null, regime: null, patterns: [], decision: "BUY", reason: "x", evidence: { quality: "WEAK", score: 0.2, components: {} } }); assert.equal(decision.action, "NO_TRADE");
+  const targets = new TargetRegistry(); targets.register({ targetVersion: "forward-close-v1", kind: "FORWARD_CLOSE_RETURN", horizonBars: 2 }); assert.equal(targets.get("forward-close-v1")?.horizonBars, 2);
+  const queue = new PredictionQueue(); queue.enqueue({ predictionId: "q1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 2, targetVersion: "forward-close-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }); assert.equal(queue.resolveAvailable([bar("SPY", 19, 100), bar("SPY", 20, 100), bar("SPY", 21, 105), bar("SPY", 22, 110)]).length, 1);
+  const directory = mkdtempSync(join(tmpdir(), "paper-lab-artifacts-")); try { const experiences = new JsonlExperienceRepository(join(directory, "experience.jsonl")); experiences.append(resolvePrediction({ predictionId: "p2", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-v1", probability: 0.5, decision: "HOLD", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 19, 100), bar("SPY", 20, 101)])!); assert.equal(experiences.all().length, 1); const artifacts = new JsonModelArtifactRepository(join(directory, "models.jsonl")); artifacts.append(artifact); assert.equal(artifacts.all()[0].artifactId, "a1"); const pending = new JsonPredictionQueueRepository(join(directory, "pending.jsonl")); pending.append({ predictionId: "q2", symbol: "SPY", decisionTimestamp: 1, horizonBars: 1, targetVersion: "forward-close-v1", probability: 0.5, decision: "NO_TRADE", modelVersion: "m1", featureVersion: "f1" }); assert.equal(pending.all().length, 1); } finally { rmSync(directory, { recursive: true, force: true }); }
 });

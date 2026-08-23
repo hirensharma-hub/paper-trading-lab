@@ -1,10 +1,12 @@
 export interface DatasetRow { symbol: string; decisionTimestamp: number; features: readonly number[]; label: 0 | 1; split: "TRAIN" | "VALIDATION" | "TEST"; }
 export interface ScalerState { means: readonly number[]; scales: readonly number[]; fittedRows: number; }
 
+export function transformWithScaler(row: readonly number[], state: ScalerState): number[] { if (row.length !== state.means.length || row.some((value) => !Number.isFinite(value))) throw new Error("Invalid row for scaler"); return row.map((value, index) => (value - state.means[index]) / (state.scales[index] || 1)); }
+
 export class StandardScaler {
   private state?: ScalerState;
   fit(rows: readonly (readonly number[])[]) { if (!rows.length) throw new Error("Cannot fit scaler on empty training data"); const width = rows[0].length; if (!width || rows.some((row) => row.length !== width || row.some((value) => !Number.isFinite(value)))) throw new Error("Scaler requires finite equal-width rows"); const means = Array.from({ length: width }, (_, column) => rows.reduce((sum, row) => sum + row[column], 0) / rows.length); const scales = means.map((mean, column) => { const variance = rows.reduce((sum, row) => sum + (row[column] - mean) ** 2, 0) / rows.length; return Math.sqrt(variance) || 1; }); this.state = { means, scales, fittedRows: rows.length }; return this; }
-  transform(row: readonly number[]): number[] { if (!this.state) throw new Error("Scaler has not been fitted"); if (row.length !== this.state.means.length || row.some((value) => !Number.isFinite(value))) throw new Error("Invalid row for scaler"); return row.map((value, index) => (value - this.state!.means[index]) / this.state!.scales[index]); }
+  transform(row: readonly number[]): number[] { if (!this.state) throw new Error("Scaler has not been fitted"); return transformWithScaler(row, this.state); }
   transformRows(rows: readonly (readonly number[])[]) { return rows.map((row) => this.transform(row)); }
   metadata() { if (!this.state) throw new Error("Scaler has not been fitted"); return structuredClone(this.state); }
 }
@@ -22,6 +24,14 @@ export class LogisticRegression {
   predictProbability(features: readonly number[]) { if (!this.weights.length || features.length !== this.weights.length) throw new Error("Model is not fitted or feature width is invalid"); return sigmoid(this.bias + features.reduce((sum, value, index) => sum + value * this.weights[index], 0)); }
   predict(features: readonly number[], threshold = 0.5): 0 | 1 { return this.predictProbability(features) >= threshold ? 1 : 0; }
   metadata() { if (!this.weights.length) throw new Error("Model is not fitted"); return { algorithm: this.algorithm, weights: [...this.weights], bias: this.bias }; }
+}
+
+export interface ModelArtifact { artifactId: string; algorithm: string; featureVersion: string; targetVersion: string; scaler: ScalerState; model: { weights: readonly number[]; bias: number }; createdAt: number; }
+export class LogisticModelBundle {
+  constructor(readonly artifact: ModelArtifact) { if (artifact.algorithm !== "logistic-regression" || artifact.model.weights.length !== artifact.scaler.means.length) throw new Error("Incompatible logistic model artifact"); }
+  transform(features: readonly number[]) { return transformWithScaler(features, this.artifact.scaler); }
+  predictProbability(features: readonly number[]) { const scaled = this.transform(features); const score = this.artifact.model.bias + scaled.reduce((sum, value, index) => sum + value * this.artifact.model.weights[index], 0); return sigmoid(score); }
+  metadata() { return structuredClone(this.artifact); }
 }
 
 export interface ClassificationMetrics { logLoss: number; brier: number; accuracy: number; precision: number; recall: number; f1: number; confusion: { truePositive: number; trueNegative: number; falsePositive: number; falseNegative: number }; }

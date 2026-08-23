@@ -39,13 +39,16 @@
 - [x] Historical analogues and evidence-quality scoring
 - [x] Prediction resolution with delayed forward outcomes and MFE/MAE
 - [x] Candidate/active/rejected model metadata and OOS-gated promotion
-- [ ] Real licensed dataset training, persisted model registry and promotion metadata
+- [x] Target registry, prediction queue and preprocessing-aware model artifact bundle
+- [x] Durable experience and model-artifact repositories
+- [ ] Real licensed dataset training and real validation evidence
 
 ## Phase 5 — Robustness and controlled learning
 
 - [ ] Walk-forward model comparison, cost/parameter sensitivity and resampling
 - [ ] Experience records, production drift/OOD monitoring and candidate model promotion
 - [ ] Persisted walk-forward artifacts, validation-only calibration and reproducible model registry storage
+- [ ] Automated promotion report from target-consistent test outcomes
 
 ## Phase 6 — Local paper-live workflow
 

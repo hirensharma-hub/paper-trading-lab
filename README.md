@@ -36,6 +36,8 @@ The persistence layer currently provides restart-safe JSONL/JSON repositories fo
 
 `src/intelligence.ts` composes the point-in-time research signals into an explainable snapshot and can return `BUY`, `HOLD` or `NO_TRADE`; it does not submit orders. `src/experience.ts` resolves predictions only after their horizon has elapsed, and `src/model-registry.ts` requires an out-of-sample score threshold before a candidate can become active. These are research controls, not claims of predictive performance.
 
+Analogue lookup can be constrained by decision time and regime and can use the same train-fitted scaler as a model artifact. Evidence fields are never inferred: without explicit out-of-sample, calibration, cost and stability evidence, the intelligence layer will not issue a BUY. Target versions, pending predictions, resolved experience and model artifacts can be stored as JSONL for reproducible offline research.
+
 ## Try the Chrome extension
 
 1. Download the repository from GitHub or clone it temporarily.
