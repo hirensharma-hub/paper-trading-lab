@@ -38,6 +38,8 @@ The persistence layer currently provides restart-safe JSONL/JSON repositories fo
 
 Analogue lookup can be constrained by decision time and regime and can use the same train-fitted scaler as a model artifact. Evidence fields are never inferred: without explicit out-of-sample, calibration, cost and stability evidence, the intelligence layer will not issue a BUY. Target versions, pending predictions, resolved experience and model artifacts can be stored as JSONL for reproducible offline research.
 
+The correctness contract is strict: analogue observations must carry usable decision and target-end timestamps when queried as-of a decision; models fit only `TRAIN` rows; feature and target versions must match; stale or future market events are rejected before state mutation; OOD states are blocked by decision policy; and the local API does not use wildcard CORS or accept unvalidated event payloads.
+
 ## Run the local paper engine
 
 Start the authoritative local process with:
@@ -47,7 +49,7 @@ npm install
 npm run service
 ```
 
-It listens only on `127.0.0.1:47821` and accepts normalized paper-market events at `/market-event`. The extension checks `/state` and uses the service’s health, pause and resume controls when the service is available; otherwise it stays in its clearly marked offline demo mode. No external market-data credentials or broker adapters are included.
+It listens only on `127.0.0.1:47821` and accepts normalized paper-market events at `/market-event`. The service uses the integrated intelligence/decision/risk/broker path; with no validated model artifact or evidence configured, its safe default is `NO_TRADE`. The extension checks `/state` and uses the service’s health, pause and resume controls when the service is available; otherwise it stays in its clearly marked offline demo mode. No external market-data credentials or broker adapters are included.
 
 ## Try the Chrome extension
 

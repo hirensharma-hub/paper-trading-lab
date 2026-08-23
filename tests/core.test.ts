@@ -22,6 +22,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { JsonExperimentRepository, JsonlEventRepository, JsonlTradeRepository } from "../src/persistence";
 import { LocalPaperEngineService } from "../src/local-service";
+import { IntegratedPaperResearchEngine, replayIntegrated } from "../src/integrated-engine";
 import { featureRegistry, getFeatureMetadata } from "../src/feature-registry";
 import { performanceByLabel } from "../src/conditional";
 import { StandardScaler, LogisticRegression, prepareDataset, classificationMetrics, calibrationBins, fitOodProfile, assessOod } from "../src/ml";
@@ -288,7 +289,7 @@ test("metrics, intelligence, prediction resolution and model registry are integr
   const year = 365.2425 * 24 * 60 * 60 * 1000;
   assert.ok(Math.abs(performanceMetrics([{ ts: 0, value: 100 }, { ts: year, value: 110 }]).cagr - 0.1) < 1e-9);
   const model = { predictProbability: () => 0.9 };
-  const observations = Array.from({ length: 25 }, () => ({ features: Array(9).fill(0), forwardReturn: 0.1, regime: "UPTREND", mfe: 0.1, mae: -0.01 }));
+  const observations = Array.from({ length: 25 }, (_, index) => ({ features: Array(9).fill(0), featureVersion: "baseline-v1", targetVersion: "forward-close-v1", forwardReturn: 0.1, decisionTimestamp: index * 10_000, targetEndTimestamp: index * 10_000 + 5_000, regime: "UPTREND", mfe: 0.1, mae: -0.01 }));
   const intelligence = new IntelligenceEngine({ model, analogues: observations, minimumAnalogueSample: 20, evidence: { outOfSample: true, calibrated: true, costSurvives: true, parameterStable: true, recentStable: true } });
   let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined;
   for (let i = 0; i < 20; i++) snapshot = intelligence.analyze(bar("SPY", i));
@@ -300,10 +301,10 @@ test("metrics, intelligence, prediction resolution and model registry are integr
 });
 
 test("analogue and evidence gates are time-safe and do not invent validation", () => {
-  const observations = [{ features: [0, 100], forwardReturn: 0.1, decisionTimestamp: 10, regime: "UPTREND" }, { features: [0, 1], forwardReturn: -0.1, decisionTimestamp: 30, regime: "RANGE" }];
+  const observations = [{ features: [0, 100], forwardReturn: 0.1, decisionTimestamp: 10, targetEndTimestamp: 15, regime: "UPTREND" }, { features: [0, 1], forwardReturn: -0.1, decisionTimestamp: 30, targetEndTimestamp: 35, regime: "RANGE" }];
   const result = nearestAnalogues([0, 1], observations, 10, 1, { asOfTimestamp: 20, requiredRegime: "UPTREND", scaler: { means: [0, 50], scales: [1, 50], fittedRows: 2 } });
   assert.equal(result.sampleSize, 1); assert.equal(result.meanForwardReturn, 0.1);
-  const cautious = new IntelligenceEngine({ model: { predictProbability: () => 0.99 }, analogues: Array.from({ length: 25 }, () => ({ features: Array(9).fill(0), forwardReturn: 0.1, regime: "UPTREND" })) });
+  const cautious = new IntelligenceEngine({ model: { predictProbability: () => 0.99 }, analogues: Array.from({ length: 25 }, (_, index) => ({ features: Array(9).fill(0), featureVersion: "baseline-v1", targetVersion: "forward-close-v1", forwardReturn: 0.1, decisionTimestamp: index * 10_000, targetEndTimestamp: index * 10_000 + 5_000, regime: "UPTREND" })) });
   let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined; for (let i = 0; i < 20; i++) snapshot = cautious.analyze(bar("SPY", i));
   assert.equal(snapshot?.decision, "NO_TRADE"); assert.equal(snapshot?.evidence?.components.outOfSample, 0); assert.equal(snapshot?.evidence?.components.costSurvives, 0);
 });
@@ -322,7 +323,7 @@ test("engine refuses stale market data and local service exposes safe controls",
   const engine = new ResearchEngine(new EmaCrossStrategy(), broker, new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 }), undefined, 1_000);
   engine.setOperationalNow(200_000);
   const stale = engine.onBar(bar("SPY", 0), { symbol: "SPY", ts: 60_000, bid: 100, ask: 100.1 });
-  assert.equal(stale.reason, "Market data is stale"); assert.equal(engine.health.dataFresh, false); assert.deepEqual(engine.health.staleSymbols, ["SPY"]);
+  assert.equal(stale.reason, "Market data is stale"); assert.equal(engine.health.dataFresh, false); assert.deepEqual(engine.health.staleSymbols, []); assert.equal(engine.health.bars, 0);
   const service = new LocalPaperEngineService(engine, { port: 0 }); await service.start();
   try {
     const address = service.address()!; const base = `http://${address.host}:${address.port}`;
@@ -337,5 +338,18 @@ test("engine refuses stale market data and local service exposes safe controls",
     await fetch(`${base}/control/reset-kill-switch`, { method: "POST" }); await fetch(`${base}/control/resume`, { method: "POST" });
     const finalHealth = await fetch(`${base}/health`).then((response) => response.json()) as { engine: { paused: boolean } };
     assert.equal(finalHealth.engine.paused, false);
+    const invalid = await fetch(`${base}/market-event`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }); assert.equal(invalid.status, 400);
+    const forbidden = await fetch(`${base}/health`, { headers: { Origin: "https://evil.example" } }); assert.equal(forbidden.status, 403);
   } finally { await service.stop(); }
+});
+
+test("critical correctness gates enforce separation, schema, costs, OOD, and shared integrated replay", () => {
+  const rows = [-1, 1, -0.5, 0.5].map((value, index) => ({ symbol: "SPY", decisionTimestamp: index, features: [value], label: value > 0 ? 1 as const : 0 as const, split: index < 2 ? "TRAIN" as const : index === 2 ? "VALIDATION" as const : "TEST" as const }));
+  const prepared = prepareDataset(rows); assert.throws(() => new LogisticRegression().fit([...prepared.train, ...prepared.validation]));
+  const oodSnapshot = { symbol: "SPY", timestamp: 1, features: null, structure: null, regime: null, patterns: [], decision: "BUY" as const, reason: "test", evidence: { quality: "VERY_STRONG" as const, score: 1, components: {} }, prediction: { probability: 0.9, ood: { status: "OUT_OF_DISTRIBUTION" as const, maxAbsZ: 5 } } };
+  assert.equal(new DecisionEngine({ minimumEvidence: "MODERATE" }).decide(oodSnapshot).action, "NO_TRADE");
+  const model = { featureVersion: "wrong-schema", predictProbability: () => 0.9 }; const intelligence = new IntelligenceEngine({ model, analogues: [] }); let mismatch: ReturnType<IntelligenceEngine["analyze"]> | undefined; for (let index = 0; index < 20; index++) mismatch = intelligence.analyze(bar("SPY", index)); assert.equal(mismatch?.prediction, undefined);
+  const broker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }); const integrated = new IntegratedPaperResearchEngine(new IntelligenceEngine(), new DecisionEngine(), broker, new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 })); const replay = replayIntegrated([{ bar: bar("SPY", 0), quote: { symbol: "SPY", ts: 60_001, bid: 99, ask: 100, last: 99.5 } }], integrated); assert.equal(replay.finalEquity, 10_000); assert.equal(replay.trades.length, 0); assert.equal(integrated.health.dataFresh, true);
+  const futureEngine = new ResearchEngine(new EmaCrossStrategy(), new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }), new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 })); futureEngine.setOperationalNow(100_000); assert.equal(futureEngine.onBar(bar("QQQ", 0), { symbol: "QQQ", ts: 101_500, bid: 99, ask: 100 }).reason, "Quote is from the future"); assert.equal(futureEngine.health.bars, 0);
+  const triple = resolvePrediction({ predictionId: "tb", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "triple-barrier-v1", targetParameters: { atr: 1 }, probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [{ ...bar("SPY", 0, 100) }, { ...bar("SPY", 1, 100), high: 102, low: 100 }]); assert.equal(triple?.resolved.label, "WIN");
 });

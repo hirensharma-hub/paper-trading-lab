@@ -33,11 +33,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     let state = await readState();
     const remote = await engineRequest("/state");
     if (remote?.ok) state = { ...state, connected: true, paused: remote.health.paused, killSwitch: remote.health.killSwitch, dataFresh: remote.health.dataFresh, engineHealth: remote.health, equity: remote.snapshot.equity, cash: remote.snapshot.cash, position: remote.health.positions.find((position) => position.symbol === state.symbol)?.quantity ?? 0 };
+    else state = { ...state, connected: false, dataFresh: false };
     if (message.type === "getState") sendResponse({ ok: true, state });
     else if (message.type === "setPaused") {
       const remoteControl = await engineRequest(message.paused ? "/control/pause" : "/control/resume", { method: "POST" });
       if (remoteControl?.ok) state = await writeState({ ...state, paused: message.paused, connected: true });
-      else state = await writeState({ ...state, paused: Boolean(message.paused) });
+      else state = await writeState({ ...state, connected: false, dataFresh: false, paused: Boolean(message.paused) });
       sendResponse({ ok: true, state });
     } else if (message.type === "resetDemo") {
       state = await writeState(DEFAULT_STATE);

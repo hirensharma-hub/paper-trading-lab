@@ -20,7 +20,8 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - `src/research.ts`: forward-return targets and chronological train/validation/test splits.
 - `src/market-data.ts`: provider interfaces, in-memory provider, CSV OHLCV parser and quality report.
 - `src/local-service.ts`: localhost-only HTTP protocol for paper engine health, state, market events and safe controls.
-- `src/service-main.ts`: runnable paper-only local engine process using the deterministic EMA strategy.
+- `src/service-main.ts`: runnable paper-only local engine process using the integrated research path.
+- `src/integrated-engine.ts`: shared intelligence → decision → risk → paper-broker flow and deterministic integrated replay.
 - `src/knowledge/index.ts`: paraphrased, linked Trading Mastery reference entries.
 - `src/structure.ts`: deterministic swing, range and higher-high/lower-low structure.
 - `src/regime.ts`: rule-based trend and volatility regime classifier.
@@ -71,6 +72,9 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - Added durable JSONL repositories for pending predictions, resolved experience records and model artifacts, plus an explicit decision policy and promotion report.
 - Added stale-quote protection, operational health state, explicit pause versus kill-switch controls and a localhost paper-engine HTTP service.
 - Added CSV-file historical provider support and connected the extension to the local service when available, with an offline demo fallback.
+- Added critical provenance/schema/timing guards: analogue target-end and target-version filtering, train-only model fitting, chronological dataset splits, target resolver dispatch including triple barriers, cost-aware EV, strict OOD decision handling, and timestamp-aware conditional metrics.
+- Added the integrated paper research engine and replay path; the runnable local service now uses it and safely produces `NO_TRADE` until a validated model/evidence artifact is configured.
+- Audited and fixed the latest service/research defects: stale events no longer mutate history/marks, no-quote health is not fresh, future quotes are rejected, order timestamps use decision time, CORS is origin-restricted, the manifest port matches the service, extension connectivity does not stay cached as healthy, and market-event payloads are validated.
 
 ## Known limitations
 
@@ -80,6 +84,7 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - Backtest replay requires normalized bar+quote events and now exposes snapshots, closed trades and metrics; durable persistence remains planned.
 - The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset or connected to a paper-forward execution policy. JSONL artifact persistence is available, but no real candidate model has been promoted.
 - Calibration and OOD checks are diagnostic utilities, not guarantees of probability accuracy or regime stability.
+- The integrated local process currently has no licensed market feed and no validated model artifact configured by default; accepting an event successfully does not imply a trade will be taken.
 - The next implementation task is a licensed provider adapter plus a walk-forward evaluator that fits preprocessing on train, calibration on validation, resolves target-versioned predictions on test, and emits a persisted promotion report.
 - Market structure, pattern, regime, event and experiment modules are initial primitives, not a complete platform.
 - TypeScript tests require `npm install` before `npm run typecheck` or `npm test`.

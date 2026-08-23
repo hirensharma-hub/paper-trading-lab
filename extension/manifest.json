@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Display-only paper-trading dashboard. It never scrapes TradingView data or submits orders.",
   "permissions": ["storage"],
-  "host_permissions": ["http://localhost:8787/*"],
+  "host_permissions": ["http://127.0.0.1:47821/*"],
   "background": { "service_worker": "service-worker.js", "type": "module" },
   "content_scripts": [{
     "matches": ["https://www.tradingview.com/*"],

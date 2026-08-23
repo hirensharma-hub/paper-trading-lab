@@ -55,6 +55,8 @@
 
 - [x] Local engine HTTP API and safe extension protocol
 - [x] Stale-data halt, health endpoint, pause and kill-switch controls
+- [x] Integrated intelligence/decision/risk/broker replay path shared with the local service
+- [x] Critical temporal, provenance, schema, OOD, cost, CORS, freshness and request-validation guards
 - [ ] Permitted licensed market-data adapter
 - [ ] Paper-forward monitoring and dashboard expansion
 

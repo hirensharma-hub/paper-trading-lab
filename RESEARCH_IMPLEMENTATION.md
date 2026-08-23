@@ -42,4 +42,7 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | Local engine service | V1 operations | Localhost HTTP health/state/market-event/control protocol | PARTIAL |
 | Stale-data safety | Operational controls | Quote-age guard and stale-symbol health reporting | IMPLEMENTED |
 | Historical file provider | Data ingestion | CSV-file provider using canonical validation and quality reporting | IMPLEMENTED |
+| Integrated paper engine | Unified execution | Shared intelligence, decision, risk, paper broker and trade-ledger path for replay/service | PARTIAL |
+| Provenance guards | Research correctness | Target-end/version, feature schema, chronological split and target resolver checks | IMPLEMENTED |
+| Service safety guards | Operational correctness | Origin restriction, payload validation, future/stale quote rejection and explicit no-data state | IMPLEMENTED |
 | Trading Mastery | Structured reference | Initial linked entries; broad topic expansion remains | PARTIAL |
