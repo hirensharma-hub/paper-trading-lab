@@ -8,6 +8,7 @@ export class PaperBroker {
   private readonly positions = new Map<string, Position>();
   private fillSequence = 0;
   private realisedPnlTotal = 0;
+  private feesPaidTotal = 0;
   private readonly lastQuoteTs = new Map<string, number>();
 
   constructor(private readonly config: BrokerConfig) {
@@ -19,6 +20,7 @@ export class PaperBroker {
   get openPositions(): Position[] { return [...this.positions.values()].map((p) => ({ ...p })); }
   get allOrders(): PaperOrder[] { return [...this.orders.values()].map((o) => structuredClone(o)); }
   get realisedPnl() { return this.realisedPnlTotal; }
+  get feesPaid() { return this.feesPaidTotal; }
 
   submit(order: PaperOrder): void {
     if (order.quantity <= 0) throw new Error("Order quantity must be positive");
@@ -37,6 +39,8 @@ export class PaperBroker {
       this.lastQuoteTs.set(order.id, quote.ts);
       const filled = order.fills.reduce((sum, f) => sum + f.quantity, 0);
       const remaining = order.quantity - filled;
+      const existingPosition = this.positions.get(order.symbol)?.quantity ?? 0;
+      if (order.side === "SELL" && existingPosition <= 0) { order.status = "REJECTED"; order.rejectionReason = "Long-only broker cannot sell without a position"; continue; }
       const executable = order.type === "MARKET"
         ? (order.side === "BUY" ? quote.ask : quote.bid)
         : order.limitPrice !== undefined && ((order.side === "BUY" && quote.ask <= order.limitPrice) || (order.side === "SELL" && quote.bid >= order.limitPrice))
@@ -46,6 +50,7 @@ export class PaperBroker {
       const displayedSize = order.side === "BUY" ? quote.askSize : quote.bidSize;
       const liquidityQuantity = displayedSize === undefined ? remaining : Math.max(0, Math.floor(displayedSize));
       let fillQuantity = Math.min(remaining, liquidityQuantity || (displayedSize === undefined ? remaining : 0));
+      if (order.side === "SELL") fillQuantity = Math.min(fillQuantity, existingPosition);
       if (order.side === "BUY" && fillQuantity > 0) {
         const affordable = Math.floor(this.cash / (executable * (1 + this.config.feeBps / 10_000)));
         fillQuantity = Math.min(fillQuantity, affordable);
@@ -79,6 +84,7 @@ export class PaperBroker {
     const closing = old.quantity !== 0 && Math.sign(old.quantity) !== Math.sign(signedQuantity);
     const realisedPnl = closing ? old.realisedPnl + (fill.price - old.averagePrice) * Math.min(Math.abs(old.quantity), fill.quantity) * Math.sign(old.quantity) - fill.fee : old.realisedPnl;
     if (closing) this.realisedPnlTotal += realisedPnl - old.realisedPnl;
+    this.feesPaidTotal += fill.fee;
     this.cash += order.side === "BUY" ? -(fill.price * fill.quantity + fill.fee) : fill.price * fill.quantity - fill.fee;
     if (nextQuantity === 0) this.positions.delete(order.symbol);
     else this.positions.set(order.symbol, { symbol: order.symbol, quantity: nextQuantity, averagePrice: closing ? old.averagePrice : (old.averagePrice * old.quantity + fill.price * signedQuantity) / nextQuantity, realisedPnl });

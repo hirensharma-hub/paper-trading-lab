@@ -107,3 +107,5 @@ export interface PortfolioSnapshot {
   dayStartEquity: number;
   highWaterMark: number;
 }
+
+export interface DataQualityReport { totalRows: number; acceptedRows: number; rejectedRows: number; duplicates: number; timeGaps: number; invalidOhlc: number; invalidVolume: number; start?: number; end?: number; symbols: readonly string[]; }

@@ -26,7 +26,9 @@ npm run typecheck
 npm test
 ```
 
-The test suite is intentionally focused on correctness: known indicator values, invalid data, cash and quote-size constraints, limit semantics, risk gates, metrics, target timing and multi-symbol accounting.
+The test suite is intentionally focused on correctness: known indicator values, invalid data, cash and quote-size constraints, limit semantics, risk gates, fee reconciliation, purged target timing, metrics and multi-symbol accounting.
+
+The research core also exposes provider-independent file/in-memory market-data interfaces, a CSV OHLCV importer with a quality report, a timezone-aware regular-session calendar, and a small linked Trading Mastery knowledge base.
 
 ## Try the Chrome extension
 

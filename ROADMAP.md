@@ -7,11 +7,14 @@
 - [x] Rolling order-rate accounting and explicit risk gates
 - [x] Meaningful unit tests and reproducible TypeScript tooling
 - [x] Basic metrics, target generation, chronological splits and replay
+- [x] Per-symbol risk marks, session calendar, purged split and explicit point-in-time timestamps
+- [x] Cash/fee/long-only accounting invariants
 - [ ] Persistence and event audit trail
 
 ## Phase 2 — Historical research
 
-- [ ] Provider-independent historical-data interfaces and quality reports
+- [x] Provider-independent historical-data interfaces and CSV quality reports
+- [ ] JSON/fixture provider parity and corporate-action metadata
 - [ ] SQLite ledger and reproducible experiment metadata
 - [ ] Walk-forward and rolling-window backtests
 - [ ] Cost stress tests, benchmarks and trade attribution

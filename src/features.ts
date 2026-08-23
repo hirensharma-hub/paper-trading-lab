@@ -10,6 +10,7 @@ const std = (values: readonly number[]) => {
 export interface FeatureConfig {
   sessionsPerYear?: number;
   sessionMinutesPerDay?: number;
+  decisionTimestamp?: number;
 }
 
 export function ema(values: readonly number[], period: number): number {
@@ -37,6 +38,7 @@ export function rsi(values: readonly number[], period = 14): number {
 
 export function buildFeatures(bars: readonly Bar[], quote?: Quote, config: FeatureConfig = {}): FeatureVector | null {
   if (bars.some((bar) => bar.symbol !== bars[0].symbol)) throw new Error("Feature history must contain one symbol");
+  if (config.decisionTimestamp !== undefined && bars.some((bar) => bar.startMs + bar.intervalMs > config.decisionTimestamp!)) throw new Error("Feature history contains data after the decision timestamp");
   if (bars.length < 20) return null;
   const closes = bars.map((bar) => bar.close);
   const volumes = bars.slice(-20).map((bar) => bar.volume);
