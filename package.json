@@ -6,8 +6,10 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "service": "tsx src/service-main.ts"
+    "service": "tsx src/service-main.ts",
+    "experiment": "tsx src/experiment-cli.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

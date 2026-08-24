@@ -5,7 +5,7 @@ import { ForwardCloseReturnResolver, TripleBarrierResolver } from "../src/experi
 import { IntelligenceEngine } from "../src/intelligence";
 import { DecisionEngine } from "../src/decision";
 import { PredictiveModelBundle, type ModelArtifact } from "../src/ml";
-import { TrustedAnalogueEngine, fitTrustedAnalogueScaler, type TrustedAnalogueObservation } from "../src/analogues";
+import { TrustedAnalogueEngine, unsafeFitTrustedAnalogueScalerRaw, type TrustedAnalogueObservation } from "../src/analogues";
 import { ExecutionCostModel } from "../src/costs";
 import { assessEvidence } from "../src/evidence";
 import { performanceMetrics } from "../src/metrics";
@@ -13,6 +13,8 @@ import { validateDatasetIntegrity, type DatasetObservation } from "../src/ml";
 import { IntegratedPaperResearchEngine } from "../src/integrated-engine";
 import { PaperBroker } from "../src/broker";
 import { RiskManager } from "../src/risk";
+
+const fitTrustedAnalogueScaler = unsafeFitTrustedAnalogueScalerRaw;
 
 const ids = ["ret1", "ret5", "emaFastDistance", "emaSlowDistance", "rsi14Normalized", "realisedVol20", "volumeZ", "spreadBps", "bookImbalance"] as const;
 const artifact = (targetVersion: string): ModelArtifact => ({ artifactId: `a-${targetVersion}`, modelId: "model-1", modelVersion: "1", algorithm: "logistic-regression", featureVersion: "baseline-v1", featureSetVersion: "baseline-named-v1", featureIds: ids, targetVersion, scaler: { means: ids.map(() => 0), scales: ids.map(() => 1), fittedRows: 20 }, model: { weights: ids.map(() => 0), bias: 2 }, oodProfile: { featureSetVersion: "baseline-named-v1", featureIds: ids, means: ids.map(() => 0), scales: ids.map(() => 1), minimums: ids.map(() => -10), maximums: ids.map(() => 10) }, createdAt: 1 });
