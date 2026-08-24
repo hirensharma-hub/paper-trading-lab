@@ -18,7 +18,7 @@ export class DecisionEngine {
     if (!evidenceAllowed) return { ...common, action: "NO_TRADE", allowed: false, reasonCodes: ["WEAK_EVIDENCE"], humanReadableReason: "Evidence quality is below decision policy", reason: "Evidence quality is below decision policy" };
     if (!oodAllowed) return { ...common, action: "NO_TRADE", allowed: false, reasonCodes: [oodStatus === "WARNING" ? "MODEL_OOD_WARNING" : "MODEL_OUT_OF_DISTRIBUTION"], humanReadableReason: "OOD state is blocked by decision policy", reason: "OOD state is blocked by decision policy" };
     const probability = snapshot.prediction?.calibratedProbability ?? snapshot.prediction?.rawProbability ?? snapshot.prediction?.probability;
-    const entryAllowed = probability !== undefined && probability >= (this.policy.entryProbability ?? 0.6) && (snapshot.expectedValue ?? -Infinity) > 0;
+    const entryAllowed = probability !== undefined && probability >= (this.policy.entryProbability ?? 0.6) && (snapshot.expectedValueEstimate?.netExpectedValue ?? snapshot.expectedValue ?? -Infinity) > 0;
     if (!entryAllowed) return { ...common, action: "NO_TRADE", allowed: false, reasonCodes: [probability !== undefined && probability < (this.policy.entryProbability ?? 0.6) ? "ENTRY_THRESHOLD_NOT_MET" : "LOW_EXPECTED_VALUE"], humanReadableReason: "Entry gates are not met", reason: "Entry gates are not met" };
     return { ...common, action: "BUY", allowed: true, reasonCodes: ["ENTRY_THRESHOLD_MET", "RISK_APPROVED"], humanReadableReason: "Entry gates are met", reason: "Entry gates are met" };
   }
