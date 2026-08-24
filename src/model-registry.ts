@@ -8,6 +8,12 @@ export const defaultPromotionPolicy: PromotionPolicy = { minimumSampleSize: 30, 
 export interface PromotionReport { modelId: string; candidateModelId?: string; candidateVersion?: string; candidateArtifactId?: string; activeModelId?: string; activeVersion?: string; activeArtifactId?: string; decision: PromotionDecision; candidate?: ModelEvaluationReport; active?: ModelEvaluationReport; eligible: boolean; reasons: readonly string[]; }
 export interface RegistryClock { now(): number; }
 export const systemRegistryClock: RegistryClock = { now: () => Date.now() };
+export class ManualClock implements RegistryClock {
+  constructor(private timestamp = 0) {}
+  now() { return this.timestamp; }
+  set(timestamp: number) { if (!Number.isFinite(timestamp)) throw new Error("Manual clock timestamp must be finite"); this.timestamp = timestamp; }
+  advance(deltaMs: number) { if (!Number.isFinite(deltaMs)) throw new Error("Manual clock delta must be finite"); this.timestamp += deltaMs; }
+}
 const key = (id: string, version: string) => `${id}::${version}`;
 export class ModelRegistry {
   private readonly models = new Map<string, ModelRecord>();
