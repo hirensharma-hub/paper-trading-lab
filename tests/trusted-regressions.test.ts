@@ -1,0 +1,11 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { TradingCalendar } from "../src/calendar";
+import { resampleEquityCurveWithQuality } from "../src/metrics";
+import { ExperimentRunner } from "../src/experiment";
+import { assessEvidence } from "../src/evidence";
+
+test("session bounds are timezone-safe across EST and EDT", () => { const calendar = new TradingCalendar(); const january = calendar.sessionBounds(Date.parse("2026-01-15T15:00:00Z")); const july = calendar.sessionBounds(Date.parse("2026-07-15T14:00:00Z")); assert.equal(new Date(january.openMs).toISOString(), "2026-01-15T14:30:00.000Z"); assert.equal(new Date(july.openMs).toISOString(), "2026-07-15T13:30:00.000Z"); });
+test("session resampling is anchored and gap policy changes validity", () => { const calendar = new TradingCalendar(); const open = calendar.sessionBounds(Date.parse("2026-01-15T15:00:00Z")).openMs; const points = [{ ts: open, value: 100 }, { ts: open + 2 * 3_600_000, value: 102 }]; const reject = resampleEquityCurveWithQuality(points, "1h", calendar, "REJECT_UNEXPECTED_GAP"); const fill = resampleEquityCurveWithQuality(points, "1h", calendar, "FORWARD_FILL_WITHIN_SESSION"); assert.equal(reject.points[0].ts, open); assert.equal(reject.quality.complete, false); assert.notEqual(reject.points.length, fill.points.length); });
+test("missing expected evidence provenance cannot pass", () => { const result = assessEvidence({ sampleSize: 100, context: { modelId: "m", modelVersion: "1", experimentId: "e", outOfSampleReport: { reportId: "o", status: "PASSED", sampleSize: 100, modelId: "m", modelVersion: "1", experimentId: "e" } }, expectedProvenance: { modelId: "m", modelVersion: "1", experimentId: "different" }, required: { requireOutOfSample: true } }); assert.equal(result.gatesPassed, false); assert.notEqual(result.quality, "VERY_STRONG"); });
+test("synthetic smoke actually completes the offline pipeline", () => { const report = new ExperimentRunner().syntheticSmoke(); assert.equal(report.status, "COMPLETED"); assert.equal(report.dataKind, "SYNTHETIC"); assert.ok(report.sampleSizes.TRAIN > 0); assert.ok(report.test?.metrics); assert.ok(report.artifactManifest.artifacts.length > 0); assert.equal(report.modelLifecycle, "CANDIDATE"); });

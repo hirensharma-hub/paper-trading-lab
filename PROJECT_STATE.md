@@ -1,5 +1,7 @@
 # Project State
 
+The offline ExperimentRunner V2 and CLI execute a real deterministic pipeline for permitted CSV input and synthetic data, including data/hash gates, point-in-time labels, calibration, untouched TEST metrics, and candidate-only artifact manifests. Historical validation remains pending permitted data.
+
 Updated: 2026-08-24
 
 ## Current phase

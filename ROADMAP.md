@@ -58,6 +58,7 @@
 - [x] Report-backed evidence, active cost-aware EV and explicit metric sampling annualisation
 - [x] Trusted DatasetObservation provenance/integrity primitives and configurable promotion policy
 - [ ] First local historical pipeline-validation experiment — requires a permitted dataset manifest and local historical data
+- [x] Deterministic offline ExperimentRunner and synthetic end-to-end smoke pipeline
 
 ## Phase 6 — Local paper-live workflow
 

@@ -66,6 +66,12 @@ See [PROJECT_STATE.md](PROJECT_STATE.md) for the current implementation boundary
 
 See [RESEARCH_IMPLEMENTATION.md](RESEARCH_IMPLEMENTATION.md) for a topic-by-topic mapping from the research specification to executable code and remaining work.
 
+## Offline experiments
+
+`npm run experiment -- --synthetic` runs a deterministic end-to-end synthetic pipeline: point-in-time observations, triple-barrier labels, chronological splits, purge validation, TRAIN-only scaling and analogue fitting, logistic training, validation selection, calibration, untouched TEST metrics, and a candidate artifact manifest. Synthetic output is explicitly not historical market evidence.
+
+With a permitted CSV and JSON configuration containing `manifest` and experiment fields, run `npm run experiment -- --data ./data/sample.csv --config ./experiments/config.json --output ./artifacts/experiment-001`. The runner is paper-only and never places live orders.
+
 ## Research discipline
 
 Every experiment should record dataset version, point-in-time feature policy, strategy/version, cost model, parameters, random seed, in-sample/validation/out-of-sample ranges and all tested configurations. A candidate model may only replace an active model after time-ordered validation and forward paper evidence show a robust improvement after costs.

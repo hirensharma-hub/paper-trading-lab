@@ -1,3 +1,7 @@
-import { ExperimentRunner } from "./experiment";
-const args = process.argv.slice(2); const configPath = args[args.indexOf("--config") + 1]; const dataPath = args[args.indexOf("--data") + 1];
-if (args.includes("--synthetic") || !dataPath || !configPath) { console.log(JSON.stringify(new ExperimentRunner().syntheticSmoke(), null, 2)); } else { console.error("Dataset/config loading is intentionally explicit and offline; provide a validated manifest to ExperimentRunner."); process.exitCode = 2; }
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { ExperimentRunner, loadCsvBars, type DatasetManifest, type ExperimentConfig } from "./experiment";
+const args = process.argv.slice(2); const value = (flag: string) => { const index = args.indexOf(flag); return index >= 0 ? args[index + 1] : undefined; }; const output = value("--output");
+let report;
+if (args.includes("--synthetic")) report = new ExperimentRunner().syntheticSmoke();
+else { const dataPath = value("--data"); const configPath = value("--config"); if (!dataPath || !configPath) { console.error("Usage: npm run experiment -- --data FILE --config FILE --output DIR"); process.exitCode = 2; } else { try { const config = JSON.parse(readFileSync(configPath, "utf8")) as ExperimentConfig & { manifest: DatasetManifest }; const bars = loadCsvBars(dataPath, config.manifest.barIntervalMs); report = new ExperimentRunner().run({ manifest: config.manifest, config, bars }); } catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; } } }
+if (report) { if (output) { mkdirSync(output, { recursive: true }); writeFileSync(`${output}/experiment-report.json`, JSON.stringify(report, null, 2)); writeFileSync(`${output}/artifact-manifest.json`, JSON.stringify(report.artifactManifest, null, 2)); } console.log(JSON.stringify({ experimentId: report.experimentId, status: report.status, dataKind: report.dataKind, sampleSizes: report.sampleSizes, message: report.message }, null, 2)); if (report.status !== "COMPLETED") process.exitCode = 1; }
