@@ -1,6 +1,6 @@
 # Project State
 
-The offline ExperimentRunner V2 and CLI execute a real deterministic pipeline for permitted CSV input and synthetic data, including data/hash/session gates, point-in-time labels with planned versus outcome-availability timestamps, strict label policy, chronological purge, TRAIN-only fitting, calibration, untouched TEST metrics, honest report statuses, persisted strict artifacts, and candidate-only lifecycle. Historical validation remains pending permitted data.
+The offline ExperimentRunner V2 and CLI execute a real deterministic pipeline for permitted CSV input and synthetic data, including data/hash/session gates, point-in-time labels with planned versus outcome-availability timestamps, strict label policy, chronological purge, TRAIN-only fitting, calibration, untouched TEST metrics, honest report statuses, persisted strict artifacts, frozen-runtime identity, warmup-safe paper replay, cost-aware benchmarks and candidate-only lifecycle. Historical validation remains pending permitted data.
 
 Updated: 2026-08-24
 
@@ -74,6 +74,7 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - Made prediction resolution target-consistent with the forward-close target, added a prediction queue, target registry and preprocessing-aware logistic model artifact bundle.
 - Added durable JSONL repositories for pending predictions, resolved experience records and model artifacts, plus an explicit decision policy and promotion report.
 - Added stale-quote protection, operational health state, explicit pause versus kill-switch controls and a localhost paper-engine HTTP service.
+- Added a strict frozen ExperimentRunner runtime manifest, complete outcome-preserving analogue persistence, actual test analogue coverage and expected-value audit fields, side-specific execution costs, observed-spread provenance, warmup/test order accounting, and deterministic synthetic BUY/SELL smoke coverage.
 - Added CSV-file historical provider support and connected the extension to the local service when available, with an offline demo fallback.
 - Added critical provenance/schema/timing guards: analogue target-end and target-version filtering, train-only model fitting, chronological dataset splits, target resolver dispatch including triple barriers, cost-aware EV, strict OOD decision handling, and timestamp-aware conditional metrics.
 - Added the integrated paper research engine and replay path; the runnable local service now uses it and safely produces `NO_TRADE` until a validated model/evidence artifact is configured.
@@ -86,7 +87,7 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - SQLite/IndexedDB persistence and a fuller UI/API contract remain future work; the current durable store is a deliberately dependency-light JSONL/JSON implementation and the local API is intentionally small.
 - Stop orders, cancellation, richer partial-fill queue models and shorting/leverage are not implemented.
 - Backtest replay requires normalized bar+quote events and now exposes snapshots, closed trades and metrics; durable persistence remains planned.
-- The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset or connected to a paper-forward execution policy. JSONL artifact persistence is available, but no real candidate model has been promoted.
+- The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset or connected to a paper-forward execution policy. JSONL artifact persistence and frozen replay metadata are available, but no real candidate model has been promoted.
 - Calibration and OOD checks are diagnostic utilities, not guarantees of probability accuracy or regime stability.
 - The integrated local process currently has no licensed market feed and no validated model artifact configured by default; accepting an event successfully does not imply a trade will be taken.
 - No licensed provider, neural network, tree model, or real historical experiment is enabled; those remain blocked until the correctness contracts have real data-backed validation.

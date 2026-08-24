@@ -1,6 +1,6 @@
 import type { Fill, PaperOrder, Position, Quote } from "./domain";
 
-export interface BrokerConfig { initialCash: number; feeBps: number; slippageBps: number; }
+export interface BrokerConfig { initialCash: number; feeBps: number; slippageBps: number; entryFeeBps?: number; exitFeeBps?: number; entrySlippageBps?: number; exitSlippageBps?: number; }
 
 export class PaperBroker {
   private cash: number;
@@ -9,6 +9,7 @@ export class PaperBroker {
   private fillSequence = 0;
   private realisedPnlTotal = 0;
   private feesPaidTotal = 0;
+  private estimatedSlippageTotal = 0;
   private readonly lastQuoteTs = new Map<string, number>();
 
   constructor(private readonly config: BrokerConfig) {
@@ -22,6 +23,7 @@ export class PaperBroker {
   get allFills(): Fill[] { return [...this.orders.values()].flatMap((order) => order.fills.map((fill) => structuredClone(fill))); }
   get realisedPnl() { return this.realisedPnlTotal; }
   get feesPaid() { return this.feesPaidTotal; }
+  get estimatedSlippage() { return this.estimatedSlippageTotal; }
 
   submit(order: PaperOrder): void {
     if (order.quantity <= 0) throw new Error("Order quantity must be positive");
@@ -52,9 +54,11 @@ export class PaperBroker {
       const liquidityQuantity = displayedSize === undefined ? remaining : Math.max(0, Math.floor(displayedSize));
       let fillQuantity = Math.min(remaining, liquidityQuantity || (displayedSize === undefined ? remaining : 0));
       if (order.side === "SELL") fillQuantity = Math.min(fillQuantity, existingPosition);
-      const estimatedPrice = executable * (order.type === "MARKET" ? 1 + (order.side === "BUY" ? 1 : -1) * this.config.slippageBps / 10_000 : 1);
+      const slippageBps = order.side === "BUY" ? (this.config.entrySlippageBps ?? this.config.slippageBps) : (this.config.exitSlippageBps ?? this.config.slippageBps);
+      const feeBps = order.side === "BUY" ? (this.config.entryFeeBps ?? this.config.feeBps) : (this.config.exitFeeBps ?? this.config.feeBps);
+      const estimatedPrice = executable * (order.type === "MARKET" ? 1 + (order.side === "BUY" ? 1 : -1) * slippageBps / 10_000 : 1);
       if (order.side === "BUY" && fillQuantity > 0) {
-        const affordable = Math.floor(this.cash / (estimatedPrice * (1 + this.config.feeBps / 10_000)));
+        const affordable = Math.floor(this.cash / (estimatedPrice * (1 + feeBps / 10_000)));
         fillQuantity = Math.min(fillQuantity, affordable);
       }
       if (fillQuantity <= 0) {
@@ -65,9 +69,10 @@ export class PaperBroker {
       }
       // Limit orders fill at an executable price without adverse slippage; this preserves the limit bound.
       const signedSlippage = order.type === "MARKET" ? (order.side === "BUY" ? 1 : -1) : 0;
-      const rawPrice = executable * (1 + signedSlippage * this.config.slippageBps / 10_000);
+      const rawPrice = executable * (1 + signedSlippage * slippageBps / 10_000);
       const price = order.limitPrice === undefined ? rawPrice : order.side === "BUY" ? Math.min(rawPrice, order.limitPrice) : Math.max(rawPrice, order.limitPrice);
-      const fee = price * fillQuantity * this.config.feeBps / 10_000;
+      const fee = price * fillQuantity * feeBps / 10_000;
+      this.estimatedSlippageTotal += Math.abs(price - executable) * fillQuantity;
       const fill: Fill = { id: `fill-${++this.fillSequence}`, orderId: order.id, ts: quote.ts, quantity: fillQuantity, price, fee };
       order.fills.push(fill); order.status = fillQuantity < remaining ? "PARTIALLY_FILLED" : "FILLED"; this.applyFill(order, fill); fills.push(fill);
     }

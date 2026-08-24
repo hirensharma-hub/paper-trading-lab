@@ -73,6 +73,10 @@ See [RESEARCH_IMPLEMENTATION.md](RESEARCH_IMPLEMENTATION.md) for a topic-by-topi
 
 With a permitted CSV and JSON configuration containing `manifest` and experiment fields, run `npm run experiment -- --data ./data/sample.csv --config ./experiments/config.json --output ./artifacts/experiment-001`. The runner is paper-only and never places live orders. The output includes the strict model artifact, TRAIN analogue scaler, calibration/OOD/test diagnostics, honest research-report statuses, replay/benchmark reports, and a hash manifest. OOS, cost-stress, walk-forward and stability evidence is never marked passed without a genuine corresponding test.
 
+The ExperimentRunner treats the decision-time split as authoritative: TRAIN, validation, calibration and TEST ranges are explicit, earlier rows are purged when their outcome becomes available at or after a later boundary, and TEST rows are untouched by fitting or calibration. The immutable first target is `triple-barrier-next-open-20-u1.5-d1-v1` with `NEXT_BAR_OPEN` entry semantics. Prediction and resolution records retain the target and entry method, while replay executes delayed next-bar-open paper fills.
+
+The persisted experiment includes the complete analogue database (UP, DOWN, TIMEOUT and AMBIGUOUS), TRAIN-only analogue pool/scaler, exact model artifact, cost model, evidence context, decision/exit/risk/broker configuration, metric frequency and gap policy. Excluded labels never receive a fabricated binary label. Replays report warmup/test counts, order counts, fees, estimated slippage, action counts and metric quality; synthetic mode is deterministic and intentionally permissive only to prove that the offline BUY/SELL path can run. A candidate is never auto-promoted.
+
 ## Research discipline
 
 Every experiment should record dataset version, point-in-time feature policy, strategy/version, cost model, parameters, random seed, in-sample/validation/out-of-sample ranges and all tested configurations. A candidate model may only replace an active model after time-ordered validation and forward paper evidence show a robust improvement after costs.

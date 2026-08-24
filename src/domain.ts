@@ -90,6 +90,7 @@ export interface PaperOrder {
   strategyId: string;
   strategyVersion: string;
   reason: string;
+  submittedAt?: number;
   fills: Fill[];
   rejectionReason?: string;
 }

@@ -23,8 +23,8 @@
 - [x] Fill-derived closed-trade ledger and replay metrics
 - [x] Triple-barrier targets, immutable target versions, resolver registry, walk-forward folds and statistical utilities
 - [x] Walk-forward and rolling-window split generation
-- [x] Baseline benchmark reporting (cash, buy-and-hold, EMA and logistic-candidate equity)
-- [ ] Cost stress tests and trade attribution
+- [x] Baseline benchmark reporting (cash, buy-and-hold, EMA and logistic-candidate equity) in common cost-aware units
+- [ ] Cost stress tests and trade attribution beyond the declared baseline cost model
 
 ## Phase 3 — Research features and mastery
 
@@ -60,6 +60,7 @@
 - [x] Trusted DatasetObservation provenance/integrity primitives and configurable promotion policy
 - [ ] First local historical pipeline-validation experiment — requires a permitted dataset manifest and local historical data
 - [x] Deterministic offline ExperimentRunner and synthetic end-to-end smoke pipeline
+- [x] Frozen-runtime persistence, outcome-preserving analogue coverage, expected-value audit and warmup-safe paper replay
 
 ## Phase 6 — Local paper-live workflow
 
