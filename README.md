@@ -51,6 +51,8 @@ npm run service
 
 It listens only on `127.0.0.1:47821` and accepts normalized paper-market events at `/market-event`. The service uses the integrated intelligence/decision/risk/broker path; with no validated model artifact or evidence configured, its safe default is `NO_TRADE`. The extension checks `/state` and uses the service’s health, pause and resume controls when the service is available; otherwise it stays in its clearly marked offline demo mode. No external market-data credentials or broker adapters are included.
 
+For an unpacked extension, configure its exact origin before starting the service: `PAPER_EXTENSION_ORIGIN=chrome-extension://<extension-id> npm run service`. Origins are never trusted merely because they use the `chrome-extension:` scheme; requests without an Origin header remain available for local CLI/test use.
+
 ## Try the Chrome extension
 
 1. Download the repository from GitHub or clone it temporarily.

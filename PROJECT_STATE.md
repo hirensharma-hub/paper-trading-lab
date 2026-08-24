@@ -1,6 +1,6 @@
 # Project State
 
-Updated: 2026-08-23
+Updated: 2026-08-24
 
 ## Current phase
 
@@ -16,7 +16,7 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - `src/risk.ts`: exposure, daily loss, drawdown, rate and kill-switch checks.
 - `src/broker.ts`: simulation-only market/limit execution, bid/ask pricing, quote-size partial fills, fees, slippage, cash constraints and position accounting.
 - `src/engine.ts`: multi-symbol event flow with independent histories, marks, session equity and rolling order timestamps.
-- `src/metrics.ts`: return, volatility, Sharpe/Sortino-style ratios, drawdown, expectancy, win rate and profit factor.
+- `src/metrics.ts`: explicit equity resampling, return metrics, time drawdown duration, expectancy, win rate and profit factor; conditional trade statistics do not manufacture portfolio annualisation.
 - `src/research.ts`: forward-return targets and chronological train/validation/test splits.
 - `src/market-data.ts`: provider interfaces, in-memory provider, CSV OHLCV parser and quality report.
 - `src/local-service.ts`: localhost-only HTTP protocol for paper engine health, state, market events and safe controls.
@@ -35,11 +35,12 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - `src/ml.ts`: train-only standardization, logistic baseline, classification/calibration metrics and simple OOD diagnostics.
 - `src/analogues.ts`: nearest historical analogue summaries with sample-size/evidence labels.
 - `src/evidence.ts`: transparent evidence-quality scoring for research claims.
-- `src/intelligence.ts`: point-in-time feature → structure → regime → pattern → model/OOD → analogue → evidence → decision pipeline.
-- `src/experience.ts`: delayed prediction resolution with forward return and MFE/MAE.
-- `src/model-registry.ts`: candidate/active/rejected model metadata with OOS-gated promotion.
-- `src/targets.ts`: versioned target definitions used to bind prediction resolution to a target contract.
-- `src/decision.ts`: evidence/OOD-aware decision policy that can force `NO_TRADE`.
+- `src/intelligence.ts`: point-in-time analysis snapshot only; final action is owned by `DecisionEngine`.
+- `src/experience.ts`: resolver-registry-backed delayed prediction resolution with post-decision next-bar-open entry and immutable target versions.
+- `src/model-registry.ts`: candidate/validated/active/retired/rejected lifecycle with report-backed promotion gates.
+- `src/targets.ts`: immutable target definitions and resolver contracts.
+- `src/decision.ts` / `src/exit-policy.ts`: typed reason codes, explicit position context, deterministic entry/hold/exit policy.
+- `src/feature-schema.ts` / `src/ml-contracts.ts`: named feature IDs and independent model preprocessing contracts.
 - `src/backtest.ts`: deterministic replay using the same engine and broker interfaces.
 - `extension/`: lightweight MV3 display-only demo popup/overlay. It does not scrape TradingView or submit orders.
 
@@ -75,6 +76,7 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - Added critical provenance/schema/timing guards: analogue target-end and target-version filtering, train-only model fitting, chronological dataset splits, target resolver dispatch including triple barriers, cost-aware EV, strict OOD decision handling, and timestamp-aware conditional metrics.
 - Added the integrated paper research engine and replay path; the runnable local service now uses it and safely produces `NO_TRADE` until a validated model/evidence artifact is configured.
 - Audited and fixed the latest service/research defects: stale events no longer mutate history/marks, no-quote health is not fresh, future quotes are rejected, order timestamps use decision time, CORS is origin-restricted, the manifest port matches the service, extension connectivity does not stay cached as healthy, and market-event payloads are validated.
+- Preserved HOLD as a valid action, added explicit exits, RTH-only new-risk gating, kill-switch reduction semantics, post-decision target entry, immutable target versions, failed-breakout current-bar checks, named feature/model contracts, report/calibration primitives, integrated ledger ownership, prediction/experience lifecycle, deterministic event journaling, service protocol metadata, and explicit extension statuses.
 
 ## Known limitations
 
@@ -85,7 +87,7 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset or connected to a paper-forward execution policy. JSONL artifact persistence is available, but no real candidate model has been promoted.
 - Calibration and OOD checks are diagnostic utilities, not guarantees of probability accuracy or regime stability.
 - The integrated local process currently has no licensed market feed and no validated model artifact configured by default; accepting an event successfully does not imply a trade will be taken.
-- The next implementation task is a licensed provider adapter plus a walk-forward evaluator that fits preprocessing on train, calibration on validation, resolves target-versioned predictions on test, and emits a persisted promotion report.
+- No licensed provider, neural network, tree model, or real historical experiment is enabled; those remain blocked until the correctness contracts have real data-backed validation.
 - Market structure, pattern, regime, event and experiment modules are initial primitives, not a complete platform.
 - TypeScript tests require `npm install` before `npm run typecheck` or `npm test`.
 

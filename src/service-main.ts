@@ -10,7 +10,8 @@ const risk = new RiskManager({ maxPositionValue: 10_000, maxGrossExposure: 25_00
 // The default service has no validated model/evidence configured, so its safe
 // decision is NO_TRADE until an offline research artifact is explicitly loaded.
 const engine = new IntegratedPaperResearchEngine(new IntelligenceEngine(), new DecisionEngine(), broker, risk);
-const service = new LocalPaperEngineService(engine, { host: "127.0.0.1", port: 47821 });
+const extensionOrigin = process.env.PAPER_EXTENSION_ORIGIN;
+const service = new LocalPaperEngineService(engine, { host: "127.0.0.1", port: 47821, allowedOrigins: extensionOrigin ? [extensionOrigin] : [] });
 await service.start();
 console.log("Paper Trading Lab engine listening on http://127.0.0.1:47821 (paper-only)");
 const shutdown = async () => { await service.stop(); process.exit(0); };

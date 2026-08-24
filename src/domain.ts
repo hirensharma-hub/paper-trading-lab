@@ -38,6 +38,8 @@ export interface FeatureVector {
   ts: number;
   symbol: string;
   close: number;
+  currentHigh?: number;
+  currentLow?: number;
   ret1: number;
   ret5: number;
   emaFast: number;
@@ -62,6 +64,10 @@ export interface Position {
   averagePrice: number;
   realisedPnl: number;
   entryFees: number;
+  entryTimestamp?: number;
+  entryModelProbability?: number;
+  entryRegime?: string;
+  entryPatterns?: readonly string[];
 }
 
 export interface Fill {

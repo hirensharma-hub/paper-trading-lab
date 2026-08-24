@@ -57,6 +57,8 @@ export function buildFeatures(bars: readonly Bar[], quote?: Quote, config: Featu
     ts: bars.at(-1)!.startMs + bars.at(-1)!.intervalMs,
     symbol: bars.at(-1)!.symbol,
     close,
+    currentHigh: bars.at(-1)!.high,
+    currentLow: bars.at(-1)!.low,
     ret1: returns.at(-1) ?? Number.NaN,
     ret5: Math.log(close / closes.at(-6)!),
     emaFast: fast,

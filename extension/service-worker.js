@@ -1,5 +1,5 @@
 const DEFAULT_STATE = {
-  demoMode: true, connected: false, dataFresh: false, paused: false, killSwitch: false, symbol: "SPY", strategy: "ema-cross v1.0.0",
+  demoMode: true, status: "OFFLINE_DEMO", engineMode: "INTEGRATED_RESEARCH", protocolVersion: "1", activeModelVersion: null, connected: false, dataFresh: false, paused: false, killSwitch: false, symbol: "SPY", strategy: "integrated-research",
   equity: 100000, cash: 100000, realisedPnl: 0, position: 0, lastPrice: 500,
   orders: 0, updatedAt: Date.now()
 };
@@ -32,8 +32,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   (async () => {
     let state = await readState();
     const remote = await engineRequest("/state");
-    if (remote?.ok) state = { ...state, connected: true, paused: remote.health.paused, killSwitch: remote.health.killSwitch, dataFresh: remote.health.dataFresh, engineHealth: remote.health, equity: remote.snapshot.equity, cash: remote.snapshot.cash, position: remote.health.positions.find((position) => position.symbol === state.symbol)?.quantity ?? 0 };
-    else state = { ...state, connected: false, dataFresh: false };
+    if (remote?.ok && remote.protocolVersion === "1") { const status = remote.health.killSwitch ? "KILL_SWITCH" : remote.health.paused ? "PAUSED" : remote.dataStatus === "FRESH" ? "CONNECTED_FRESH" : remote.dataStatus === "STALE" ? "CONNECTED_STALE" : "CONNECTED_NO_DATA"; state = { ...state, status, engineMode: remote.engineMode ?? "INTEGRATED_RESEARCH", protocolVersion: remote.protocolVersion, connected: true, paused: remote.health.paused, killSwitch: remote.health.killSwitch, dataFresh: remote.dataStatus === "FRESH", engineHealth: remote.health, equity: remote.snapshot.equity, cash: remote.snapshot.cash, position: remote.health.positions.find((position) => position.symbol === state.symbol)?.quantity ?? 0 };
+    } else if (remote?.ok) state = { ...state, status: "PROTOCOL_MISMATCH", connected: false, dataFresh: false };
+    else state = { ...state, status: "OFFLINE_DEMO", connected: false, dataFresh: false };
     if (message.type === "getState") sendResponse({ ok: true, state });
     else if (message.type === "setPaused") {
       const remoteControl = await engineRequest(message.paused ? "/control/pause" : "/control/resume", { method: "POST" });

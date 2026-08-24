@@ -1,4 +1,10 @@
-export interface DatasetRow { symbol: string; decisionTimestamp: number; features: readonly number[]; label: 0 | 1; split: "TRAIN" | "VALIDATION" | "TEST"; }
+export interface DatasetRow { symbol: string; decisionTimestamp: number; features: readonly number[]; label: 0 | 1; split: "TRAIN" | "VALIDATION" | "CALIBRATION" | "TEST"; }
+export type TrainingDataset = Readonly<{ role: "TRAIN"; rows: readonly DatasetRow[] }>;
+export type ValidationDataset = Readonly<{ role: "VALIDATION"; rows: readonly DatasetRow[] }>;
+export type CalibrationDataset = Readonly<{ role: "CALIBRATION"; rows: readonly DatasetRow[] }>;
+export type TestDataset = Readonly<{ role: "TEST"; rows: readonly DatasetRow[] }>;
+export function trainingDataset(rows: readonly DatasetRow[]): TrainingDataset { if (!rows.length || rows.some((row) => row.split !== "TRAIN")) throw new Error("TrainingDataset may contain TRAIN rows only"); return { role: "TRAIN", rows: structuredClone(rows) }; }
+export function calibrationDataset(rows: readonly DatasetRow[]): CalibrationDataset { if (!rows.length || rows.some((row) => row.split !== "CALIBRATION")) throw new Error("CalibrationDataset may contain CALIBRATION rows only"); return { role: "CALIBRATION", rows: structuredClone(rows) }; }
 export const MODEL_FEATURE_VERSION = "baseline-v1";
 export interface ScalerState { means: readonly number[]; scales: readonly number[]; fittedRows: number; }
 
@@ -12,8 +18,8 @@ export class StandardScaler {
   metadata() { if (!this.state) throw new Error("Scaler has not been fitted"); return structuredClone(this.state); }
 }
 
-export interface PreparedDataset { train: readonly DatasetRow[]; validation: readonly DatasetRow[]; test: readonly DatasetRow[]; scaler: ScalerState; }
-export function prepareDataset(rows: readonly DatasetRow[]): PreparedDataset { if (rows.some((row) => !Number.isFinite(row.decisionTimestamp))) throw new Error("Dataset timestamps must be finite"); const ordered = [...rows].sort((a, b) => a.decisionTimestamp - b.decisionTimestamp); const train = ordered.filter((row) => row.split === "TRAIN"); const validation = ordered.filter((row) => row.split === "VALIDATION"); const test = ordered.filter((row) => row.split === "TEST"); if (!train.length || (validation.length && validation[0].decisionTimestamp <= train.at(-1)!.decisionTimestamp) || (test.length && test[0].decisionTimestamp <= (validation.at(-1) ?? train.at(-1)!).decisionTimestamp)) throw new Error("Dataset splits must be chronological and non-overlapping"); const scaler = new StandardScaler().fit(train.map((row) => row.features)); const transform = (split: DatasetRow["split"]) => ordered.filter((row) => row.split === split).map((row) => ({ ...row, features: scaler.transform(row.features) })); return { train: transform("TRAIN"), validation: transform("VALIDATION"), test: transform("TEST"), scaler: scaler.metadata() }; }
+export interface PreparedDataset { train: readonly DatasetRow[]; validation: readonly DatasetRow[]; calibration: readonly DatasetRow[]; test: readonly DatasetRow[]; scaler: ScalerState; }
+export function prepareDataset(rows: readonly DatasetRow[]): PreparedDataset { if (rows.some((row) => !Number.isFinite(row.decisionTimestamp))) throw new Error("Dataset timestamps must be finite"); const ordered = [...rows].sort((a, b) => a.decisionTimestamp - b.decisionTimestamp); const train = ordered.filter((row) => row.split === "TRAIN"); const validation = ordered.filter((row) => row.split === "VALIDATION"); const calibration = ordered.filter((row) => row.split === "CALIBRATION"); const test = ordered.filter((row) => row.split === "TEST"); const boundaries = [train.at(-1)?.decisionTimestamp, validation.at(-1)?.decisionTimestamp, calibration.at(-1)?.decisionTimestamp].filter((value): value is number => value !== undefined); if (!train.length || [validation[0], calibration[0], test[0]].some((row, index) => row && row.decisionTimestamp <= (boundaries[index - 1] ?? train.at(-1)!.decisionTimestamp))) throw new Error("Dataset splits must be chronological and non-overlapping"); const scaler = new StandardScaler().fit(train.map((row) => row.features)); const transform = (split: DatasetRow["split"]) => ordered.filter((row) => row.split === split).map((row) => ({ ...row, features: scaler.transform(row.features) })); return { train: transform("TRAIN"), validation: transform("VALIDATION"), calibration: transform("CALIBRATION"), test: transform("TEST"), scaler: scaler.metadata() }; }
 
 const sigmoid = (value: number) => value >= 0 ? 1 / (1 + Math.exp(-value)) : Math.exp(value) / (1 + Math.exp(value));
 export interface LogisticConfig { learningRate?: number; epochs?: number; l2?: number; }
@@ -27,9 +33,9 @@ export class LogisticRegression {
   metadata() { if (!this.weights.length) throw new Error("Model is not fitted"); return { algorithm: this.algorithm, weights: [...this.weights], bias: this.bias }; }
 }
 
-export interface ModelArtifact { artifactId: string; algorithm: string; featureVersion: string; targetVersion: string; scaler: ScalerState; model: { weights: readonly number[]; bias: number }; createdAt: number; }
+export interface ModelArtifact { artifactId: string; modelId?: string; modelVersion?: string; algorithm: string; featureVersion: string; featureSetVersion?: string; featureIds?: readonly string[]; targetVersion: string; scaler: ScalerState; model: { weights: readonly number[]; bias: number }; calibratorState?: { slope: number; intercept: number; fittedRows: number }; oodProfile?: OodProfile; createdAt: number; }
 export class LogisticModelBundle {
-  constructor(readonly artifact: ModelArtifact) { if (artifact.algorithm !== "logistic-regression" || artifact.model.weights.length !== artifact.scaler.means.length) throw new Error("Incompatible logistic model artifact"); }
+  constructor(readonly artifact: ModelArtifact) { if (artifact.algorithm !== "logistic-regression" || artifact.model.weights.length !== artifact.scaler.means.length) throw new Error("Incompatible logistic model artifact"); if (artifact.featureIds && new Set(artifact.featureIds).size !== artifact.featureIds.length) throw new Error("Model feature IDs must be unique"); if (artifact.featureIds && artifact.featureIds.length !== artifact.model.weights.length) throw new Error("Model feature ID width mismatch"); }
   transform(features: readonly number[]) { return transformWithScaler(features, this.artifact.scaler); }
   predictProbability(features: readonly number[]) { const scaled = this.transform(features); const score = this.artifact.model.bias + scaled.reduce((sum, value, index) => sum + value * this.artifact.model.weights[index], 0); return sigmoid(score); }
   metadata() { return structuredClone(this.artifact); }

@@ -10,7 +10,7 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | Look-ahead bias | `look-ahead-bias` | Point-in-time feature guard and purged splits | IMPLEMENTED |
 | Transaction costs | `transaction-costs` | Fees, spread-side execution, slippage and cash checks | IMPLEMENTED |
 | Purging/embargo | `purged-split` | Purged chronological split with embargo bars | IMPLEMENTED |
-| No-trade | `no-trade` | HOLD/risk rejection path; structured decision engine remains planned | PARTIAL |
+| No-trade | `no-trade` | Explicit HOLD versus NO_TRADE actions with typed decision reason codes | IMPLEMENTED |
 | Market structure | Planned reference expansion | Deterministic swing/range/trend snapshot | PARTIAL |
 | Patterns | Planned reference expansion | Initial breakout, deviation and volatility evidence detectors | PARTIAL |
 | Regimes | Planned reference expansion | Rule-based trend/volatility classifier | PARTIAL |
@@ -31,7 +31,7 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | Evidence quality | Research governance | Transparent weighted score across sample size, OOS, calibration, costs and stability | IMPLEMENTED |
 | Integrated intelligence | Point-in-time decision pipeline | Features, confirmed structure, regimes, patterns, model/OOD, analogues, EV and evidence gates | PARTIAL |
 | Prediction resolution | Experience research | Delayed forward return, label, MFE and MAE resolution | IMPLEMENTED |
-| Model lifecycle | Controlled learning | Candidate/active/rejected registry with OOS threshold promotion | PARTIAL |
+| Model lifecycle | Controlled learning | Candidate/validated/active/retired/rejected registry with evaluation-report promotion gates | PARTIAL |
 | Evidence gating | Research governance | Explicit validation/calibration/cost/stability inputs; weak evidence forces NO_TRADE | IMPLEMENTED |
 | Analogue normalization | Similarity research | Optional train-fitted scaler and as-of/regime filtering before nearest-neighbour ranking | PARTIAL |
 | Target registry | Target governance | Versioned target contract for prediction creation and resolution | IMPLEMENTED |
@@ -42,7 +42,7 @@ Status reflects implemented, tested behaviour in the repository; it does not imp
 | Local engine service | V1 operations | Localhost HTTP health/state/market-event/control protocol | PARTIAL |
 | Stale-data safety | Operational controls | Quote-age guard and stale-symbol health reporting | IMPLEMENTED |
 | Historical file provider | Data ingestion | CSV-file provider using canonical validation and quality reporting | IMPLEMENTED |
-| Integrated paper engine | Unified execution | Shared intelligence, decision, risk, paper broker and trade-ledger path for replay/service | PARTIAL |
+| Integrated paper engine | Unified execution | Shared analysis, decision, exit, risk, paper broker, owned ledger, prediction queue and event journal path | IMPLEMENTED |
 | Provenance guards | Research correctness | Target-end/version, feature schema, chronological split and target resolver checks | IMPLEMENTED |
 | Service safety guards | Operational correctness | Origin restriction, payload validation, future/stale quote rejection and explicit no-data state | IMPLEMENTED |
 | Trading Mastery | Structured reference | Initial linked entries; broad topic expansion remains | PARTIAL |

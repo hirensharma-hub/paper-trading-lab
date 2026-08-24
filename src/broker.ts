@@ -92,6 +92,6 @@ export class PaperBroker {
     this.feesPaidTotal += fill.fee;
     this.cash += order.side === "BUY" ? -(fill.price * fill.quantity + fill.fee) : fill.price * fill.quantity - fill.fee;
     if (nextQuantity === 0) this.positions.delete(order.symbol);
-    else this.positions.set(order.symbol, { symbol: order.symbol, quantity: nextQuantity, averagePrice: closing ? old.averagePrice : (old.averagePrice * old.quantity + fill.price * signedQuantity) / nextQuantity, realisedPnl, entryFees: closing ? old.entryFees - allocatedEntryFees : old.entryFees + fill.fee });
+    else this.positions.set(order.symbol, { symbol: order.symbol, quantity: nextQuantity, averagePrice: closing ? old.averagePrice : (old.averagePrice * old.quantity + fill.price * signedQuantity) / nextQuantity, realisedPnl, entryFees: closing ? old.entryFees - allocatedEntryFees : old.entryFees + fill.fee, entryTimestamp: closing ? old.entryTimestamp : old.entryTimestamp ?? fill.ts, entryModelProbability: old.entryModelProbability, entryRegime: old.entryRegime, entryPatterns: old.entryPatterns });
   }
 }

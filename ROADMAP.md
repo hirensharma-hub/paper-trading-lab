@@ -21,7 +21,7 @@
 - [ ] SQLite ledger and reproducible experiment metadata
 - [x] Typed in-memory event, experiment and hypothesis repositories
 - [x] Fill-derived closed-trade ledger and replay metrics
-- [x] Triple-barrier targets, walk-forward folds and statistical utilities
+- [x] Triple-barrier targets, immutable target versions, resolver registry, walk-forward folds and statistical utilities
 - [x] Walk-forward and rolling-window split generation
 - [ ] Cost stress tests, benchmarks and trade attribution
 
@@ -39,7 +39,7 @@
 - [x] Logistic regression baseline, calibration and model metadata
 - [x] Historical analogues and evidence-quality scoring
 - [x] Prediction resolution with delayed forward outcomes and MFE/MAE
-- [x] Candidate/active/rejected model metadata and OOS-gated promotion
+- [x] Candidate/validated/active/retired/rejected model metadata and report-gated promotion primitives
 - [x] Target registry, prediction queue and preprocessing-aware model artifact bundle
 - [x] Durable experience and model-artifact repositories
 - [ ] Real licensed dataset training and real validation evidence
@@ -53,7 +53,7 @@
 
 ## Phase 6 — Local paper-live workflow
 
-- [x] Local engine HTTP API and safe extension protocol
+- [x] Local engine HTTP API, explicit origin allowlist, protocol metadata and safe extension protocol
 - [x] Stale-data halt, health endpoint, pause and kill-switch controls
 - [x] Integrated intelligence/decision/risk/broker replay path shared with the local service
 - [x] Critical temporal, provenance, schema, OOD, cost, CORS, freshness and request-validation guards
