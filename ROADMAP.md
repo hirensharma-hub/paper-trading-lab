@@ -60,7 +60,8 @@
 - [x] Trusted DatasetObservation provenance/integrity primitives and configurable promotion policy
 - [ ] First local historical pipeline-validation experiment — requires a permitted dataset manifest and local historical data
 - [x] Deterministic offline ExperimentRunner and synthetic end-to-end smoke pipeline
-- [x] Frozen-runtime persistence, outcome-preserving analogue coverage, expected-value audit and warmup-safe paper replay
+- [x] Frozen-runtime persistence, outcome-preserving analogue coverage, actual-runtime expected-value audit, decision/outcome windows and warmup-safe delayed paper replay
+- [x] Historical readiness report with full-session, temporal-evidence, fit-isolation and execution-fidelity gates
 
 ## Phase 6 — Local paper-live workflow
 

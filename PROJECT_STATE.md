@@ -1,6 +1,6 @@
 # Project State
 
-The offline ExperimentRunner V2 and CLI execute a real deterministic pipeline for permitted CSV input and synthetic data, including data/hash/session gates, point-in-time labels with planned versus outcome-availability timestamps, strict label policy, chronological purge, TRAIN-only fitting, calibration, untouched TEST metrics, honest report statuses, persisted strict artifacts, frozen-runtime identity, warmup-safe paper replay, cost-aware benchmarks and candidate-only lifecycle. Historical validation remains pending permitted data.
+The offline ExperimentRunner V2 and CLI execute a real deterministic pipeline for permitted CSV input and synthetic data, including data/hash/full-session gates, point-in-time labels with trading-bar planned versus outcome-availability timestamps, explicit decision/outcome windows, configured-boundary purge, TRAIN-only fitting and calibration, untouched TEST metrics, post-test evidence availability, persisted fit ranges, frozen-runtime identity, delayed-intent paper replay, cost-aware benchmarks and candidate-only lifecycle. Historical validation remains pending permitted data.
 
 Updated: 2026-08-24
 
@@ -39,6 +39,8 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - `src/evidence.ts`: transparent evidence-quality scoring for research claims.
 - `src/intelligence.ts`: point-in-time analysis snapshot only; final action is owned by `DecisionEngine`.
 - `src/experience.ts`: resolver-registry-backed delayed prediction resolution with post-decision next-bar-open entry and immutable target versions.
+- `src/bar-schedule.ts`: expected trading-bar clock across regular-session closes, weekends and holidays.
+- `src/execution-policy.ts`: explicit entry/exit execution methods and runtime modes.
 - `src/model-registry.ts`: candidate/validated/active/retired/rejected lifecycle with report-backed promotion gates.
 - `src/targets.ts`: immutable target definitions and resolver contracts.
 - `src/decision.ts` / `src/exit-policy.ts`: typed reason codes, explicit position context, deterministic entry/hold/exit policy.
@@ -82,6 +84,8 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - Preserved HOLD as a valid action, added explicit exits, RTH-only new-risk gating, kill-switch reduction semantics, post-decision target entry, immutable target versions, failed-breakout current-bar checks, named feature/model contracts, report/calibration primitives, integrated ledger ownership, prediction/experience lifecycle, deterministic event journaling, service protocol metadata, and explicit extension statuses.
 - Finalized the experiment-runtime audit: frozen replay now carries calendar and regime-evidence settings, TEST replay stops at the configured test end, benchmarks use the same TEST interval and `PaperBroker` cost path for multiple symbols, report ranges are derived from final rows, empty calibration bins remain null, and deterministic `ManualClock` support is available for registry tests.
 - Corrected session resampling so warmup-suppressed observations do not create false pre-window gaps while missing buckets inside the observed session window still fail the metric-quality gate; the expanded regression suite now covers the exact split, target-entry, analogue, benchmark, runtime, clock and replay contracts.
+- Completed the temporal/execution fidelity pass: current OOS evidence is post-test and excluded from the pre-test runtime context; evidence availability is checked against the decision timestamp; horizons use eligible trading bars; purge uses explicit configured boundaries; split/replay/journal ordering uses quote-aware decision timestamps; delayed next-open intents are risk-sized at the actual opening quote; opening spread is applied once before broker slippage/fees; entry and exit methods are independent; actual broker submission drives order-rate accounting; pending end-of-test intents are cancelled and reported; and the replay exposes outcome tails, execution-time risk outcomes, actual Intelligence EV and reason-code counts.
+- Added `HistoricalReadinessReport` with explicit full-session, gap, corporate-action, split, purge, scaler/calibration isolation, temporal-evidence, target, execution, cost and metric-quality gates. It remains false for synthetic smoke output and until a permitted historical dataset is actually validated.
 
 ## Known limitations
 
@@ -92,6 +96,7 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - The ML implementation is a tested research baseline; it has not been trained on a licensed historical dataset or connected to a paper-forward execution policy. JSONL artifact persistence and frozen replay metadata are available, but no real candidate model has been promoted.
 - Calibration and OOD checks are diagnostic utilities, not guarantees of probability accuracy or regime stability.
 - The integrated local process currently has no licensed market feed and no validated model artifact configured by default; accepting an event successfully does not imply a trade will be taken.
+- Historical `readyForInterpretation` is intentionally false until a permitted dataset passes the complete readiness report; synthetic bypasses are explicitly named and cannot be used to claim historical evidence.
 - No licensed provider, neural network, tree model, or real historical experiment is enabled; those remain blocked until the correctness contracts have real data-backed validation.
 - Market structure, pattern, regime, event and experiment modules are initial primitives, not a complete platform.
 - TypeScript tests require `npm install` before `npm run typecheck` or `npm test`.
