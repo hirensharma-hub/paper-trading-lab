@@ -1,4 +1,5 @@
 export interface TradingCalendarConfig { timeZone?: string; sessionOpenHour?: number; sessionOpenMinute?: number; sessionCloseHour?: number; sessionCloseMinute?: number; holidays?: readonly string[]; earlyCloses?: Readonly<Record<string, number>>; }
+export interface ExchangeCalendarSpec { version: string; config: TradingCalendarConfig; }
 export interface HolidayProvider { isHoliday(sessionKey: string): boolean; earlyCloseMinutes(sessionKey: string): number | null; }
 export class ConfiguredHolidayProvider implements HolidayProvider { constructor(private readonly holidays: readonly string[] = [], private readonly earlyCloses: Readonly<Record<string, number>> = {}) {} isHoliday(sessionKey: string) { return this.holidays.includes(sessionKey); } earlyCloseMinutes(sessionKey: string) { return this.earlyCloses[sessionKey] ?? null; } }
 export class TradingCalendar {
@@ -15,3 +16,5 @@ export class TradingCalendar {
   private sessionCloseMinutes(key: string) { return this.holidayProvider.earlyCloseMinutes(key) ?? this.config.sessionCloseHour * 60 + this.config.sessionCloseMinute; }
   private localParts(timestamp: number) { const parts = new Intl.DateTimeFormat("en-US", { timeZone: this.config.timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(timestamp); const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)])); return { year: values.year, month: values.month, day: values.day, hour: values.hour === 24 ? 0 : values.hour, minute: values.minute, second: values.second }; }
 }
+
+export function exchangeCalendarSpec(config: TradingCalendarConfig): ExchangeCalendarSpec { return { version: "exchange-calendar-spec-v1", config: structuredClone(config) }; }
