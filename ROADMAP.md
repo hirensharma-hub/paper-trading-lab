@@ -23,7 +23,8 @@
 - [x] Fill-derived closed-trade ledger and replay metrics
 - [x] Triple-barrier targets, immutable target versions, resolver registry, walk-forward folds and statistical utilities
 - [x] Walk-forward and rolling-window split generation
-- [ ] Cost stress tests, benchmarks and trade attribution
+- [x] Baseline benchmark reporting (cash, buy-and-hold, EMA and logistic-candidate equity)
+- [ ] Cost stress tests and trade attribution
 
 ## Phase 3 — Research features and mastery
 
