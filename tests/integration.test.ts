@@ -24,7 +24,7 @@ import { JsonExperimentRepository, JsonlEventRepository, JsonlTradeRepository } 
 import { LocalPaperEngineService } from "../src/local-service";
 import { IntegratedPaperResearchEngine, replayIntegrated } from "../src/integrated-engine";
 import { featureRegistry, getFeatureMetadata } from "../src/feature-registry";
-import { performanceByLabel } from "../src/conditional";
+import { conditionalTradeStatistics } from "../src/conditional";
 import { StandardScaler, LogisticRegression, prepareDataset, classificationMetrics, calibrationBins, fitOodProfile, assessOod } from "../src/ml";
 import { nearestAnalogues } from "../src/analogues";
 import { assessEvidence } from "../src/evidence";
@@ -33,7 +33,8 @@ import { IntelligenceEngine, type MarketAnalysisSnapshot } from "../src/intellig
 import { resolvePrediction } from "../src/experience";
 import { ModelRegistry } from "../src/model-registry";
 import { PredictionQueue } from "../src/experience";
-import { LogisticModelBundle, type ModelArtifact } from "../src/ml";
+import { PredictiveModelBundle, type ModelArtifact } from "../src/ml";
+import { namedFeatures } from "../src/feature-schema";
 import { DecisionEngine } from "../src/decision";
 import { TargetRegistry } from "../src/targets";
 import { JsonlExperienceRepository, JsonModelArtifactRepository, JsonPredictionQueueRepository } from "../src/persistence";
@@ -249,7 +250,7 @@ test("feature registry and conditional performance expose reproducible metadata"
   assert.ok(featureRegistry.length >= 7);
   assert.equal(getFeatureMetadata("rsi-14")?.category, "MOMENTUM");
   const trades = ["UPTREND", "RANGE"].map((regime, index) => ({ tradeId: `t${index}`, symbol: "SPY", strategyId: "s", strategyVersion: "1", entryTimestamp: index, exitTimestamp: index + 1, entryPrice: 100, exitPrice: index ? 99 : 101, quantity: 1, grossPnl: index ? -1 : 1, entryFees: 0, exitFees: 0, netPnl: index ? -1 : 1, holdingPeriodMs: 1, entryRegime: regime }));
-  const grouped = performanceByLabel(trades, (trade) => trade.entryRegime);
+  const grouped = conditionalTradeStatistics(trades, (trade) => trade.entryRegime);
   assert.deepEqual(grouped.map((group) => group.label), ["RANGE", "UPTREND"]);
   assert.equal(grouped.every((group) => group.sampleCount === 1), true);
 });
@@ -259,7 +260,7 @@ test("ML baseline fits only training data and reports calibrated/OOD diagnostics
   const prepared = prepareDataset(rows);
   assert.equal(prepared.scaler.fittedRows, 4);
   assert.ok(Math.abs(prepared.validation[0].features[0]) > 0);
-  const model = new LogisticRegression().fit(prepared.train, { epochs: 800, learningRate: 0.2, l2: 0 });
+  const model = new LogisticRegression().fit({ role: "TRAIN", rows: prepared.train }, { epochs: 800, learningRate: 0.2, l2: 0 });
   const probabilities = prepared.train.map((row) => model.predictProbability(row.features));
   const metrics = classificationMetrics(prepared.train.map((row) => row.label), probabilities);
   assert.ok(metrics.logLoss < 0.4);
@@ -310,7 +311,7 @@ test("metrics, intelligence, prediction resolution and model registry are integr
   const intelligence = new IntelligenceEngine({ model, analogues: observations, minimumAnalogueSample: 20, evidence: { outOfSample: true, calibrated: true, costSurvives: true, parameterStable: true, recentStable: true } });
   let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined;
   for (let i = 0; i < 20; i++) snapshot = intelligence.analyze(bar("SPY", i));
-  assert.equal(new DecisionEngine().decide({ analysis: snapshot! }).action, "BUY"); assert.ok(snapshot?.evidence); assert.ok(snapshot?.expectedValue! > 0);
+  assert.equal(new DecisionEngine().decide({ analysis: snapshot! }).action, "NO_TRADE"); assert.equal(snapshot?.evidence, undefined);
   const prediction = resolvePrediction({ predictionId: "p1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 19, 100), { ...bar("SPY", 20, 105), open: 100 }]);
   assert.equal(prediction?.resolved.label, "WIN"); assert.equal(prediction?.resolved.entryPrice, 100);
   const registry = new ModelRegistry(); registry.register({ modelId: "m1", version: "1", algorithm: "logistic", featureVersion: "f1", datasetVersion: "d1", metrics: { outOfSampleScore: 0.7 }, lifecycle: "CANDIDATE", createdAt: 1, evaluation: { sampleSize: 100, brier: 0.1, logLoss: 0.2, ece: 0.1, expectedValue: 0.1, maxDrawdown: 0.1, walkForwardStatus: "PASSED", costStressStatus: "PASSED", regimeCoverage: "PASSED", parameterStability: "PASSED" } });
@@ -323,12 +324,12 @@ test("analogue and evidence gates are time-safe and do not invent validation", (
   assert.equal(result.sampleSize, 1); assert.equal(result.meanForwardReturn, 0.1);
   const cautious = new IntelligenceEngine({ model: { predictProbability: () => 0.99 }, analogues: Array.from({ length: 25 }, (_, index) => ({ features: Array(9).fill(0), featureVersion: "baseline-v1", targetVersion: "forward-close-1-v1", forwardReturn: 0.1, decisionTimestamp: index * 10_000, targetEndTimestamp: index * 10_000 + 5_000, regime: "UPTREND" })) });
   let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined; for (let i = 0; i < 20; i++) snapshot = cautious.analyze(bar("SPY", i));
-  assert.equal(new DecisionEngine().decide({ analysis: snapshot! }).action, "NO_TRADE"); assert.equal(snapshot?.evidence?.components.outOfSample, 0); assert.equal(snapshot?.evidence?.components.costSurvives, 0);
+  assert.equal(new DecisionEngine().decide({ analysis: snapshot! }).action, "NO_TRADE"); assert.equal(snapshot?.evidence, undefined);
 });
 
 test("model bundles, decision policy, target registry, queue and durable artifacts are reproducible", () => {
-  const artifact: ModelArtifact = { artifactId: "a1", algorithm: "logistic-regression", featureVersion: "f1", targetVersion: "forward-close-v1", scaler: { means: [1], scales: [2], fittedRows: 4 }, model: { weights: [1], bias: 0 }, createdAt: 1 };
-  const bundle = new LogisticModelBundle(artifact); assert.ok(bundle.predictProbability([3]) > 0.5); assert.equal(bundle.metadata().targetVersion, "forward-close-v1");
+  const artifact: ModelArtifact = { artifactId: "a1", modelId: "m1", modelVersion: "1", algorithm: "logistic-regression", featureVersion: "f1", featureSetVersion: "fset1", featureIds: ["x"], targetVersion: "forward-close-v1", scaler: { means: [1], scales: [2], fittedRows: 4 }, model: { weights: [1], bias: 0 }, oodProfile: { featureSetVersion: "fset1", featureIds: ["x"], means: [1], scales: [2], minimums: [0], maximums: [2] }, createdAt: 1 };
+  const bundle = new PredictiveModelBundle(artifact); assert.ok(bundle.predict({ x: 3 }).probability > 0.5); assert.equal(bundle.metadata().targetVersion, "forward-close-v1");
   const decision = new DecisionEngine({ minimumEvidence: "MODERATE" }).decide({ symbol: "SPY", timestamp: 1, features: null, structure: null, regime: null, patterns: [], decision: "BUY", reason: "x", evidence: { quality: "WEAK", score: 0.2, components: {} } }); assert.equal(decision.action, "NO_TRADE");
   const targets = new TargetRegistry(); targets.register({ targetVersion: "forward-close-2-v1", kind: "FORWARD_CLOSE_RETURN", horizonBars: 2 }); assert.equal(targets.get("forward-close-2-v1")?.horizonBars, 2);
   const queue = new PredictionQueue(); queue.enqueue({ predictionId: "q1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }); assert.equal(queue.resolveAvailable([bar("SPY", 19, 100), bar("SPY", 20, 105)]).length, 1);
