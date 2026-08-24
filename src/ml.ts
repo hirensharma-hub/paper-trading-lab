@@ -85,4 +85,6 @@ export class PredictiveModelBundle {
   }
   metadata() { return structuredClone(this.artifact); }
 }
+export class TrustedPredictiveModelBundle extends PredictiveModelBundle { constructor(artifact: TrustedModelArtifact) { super(artifact, { trusted: true }); } }
+export class LegacyPredictiveModelBundle extends PredictiveModelBundle { constructor(artifact: ModelArtifact) { super(artifact); } }
 export function expectedCalibrationError(labels: readonly (0 | 1)[], probabilities: readonly number[], binCount = 10): number { const bins = calibrationBins(labels, probabilities, binCount); return bins.reduce((sum, bin) => sum + (bin.count ? bin.count / labels.length * Math.abs(bin.meanPredicted - bin.eventRate) : 0), 0); }
