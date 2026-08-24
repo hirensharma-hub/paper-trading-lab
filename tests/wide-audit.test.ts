@@ -20,6 +20,6 @@ test("synthetic evidence cannot silently become historical readiness", () => {
 test("calendar provenance is versioned and deterministic", () => {
   const first = exchangeCalendarSpec({ timeZone: "America/New_York" });
   const second = exchangeCalendarSpec({ timeZone: "America/New_York" });
-  assert.equal(first.version, "exchange-calendar-spec-v1");
+  assert.equal(first.version, "exchange-calendar-spec-v2");
   assert.deepEqual(first, second);
 });
