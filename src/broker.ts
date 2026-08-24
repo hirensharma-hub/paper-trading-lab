@@ -62,7 +62,7 @@ export class PaperBroker {
         fillQuantity = Math.min(fillQuantity, affordable);
       }
       if (fillQuantity <= 0) {
-        if (order.side === "BUY" && this.cash < executable * (1 + this.config.feeBps / 10_000)) {
+        if (order.side === "BUY" && this.cash < executable * (1 + feeBps / 10_000)) {
           order.status = "REJECTED"; order.rejectionReason = "Insufficient simulated cash";
         } else order.status = "WORKING";
         continue;
