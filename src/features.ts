@@ -13,6 +13,16 @@ export interface FeatureConfig {
   decisionTimestamp?: number;
 }
 
+export const ATR_FEATURE_VERSION = "atr14-v1";
+export function averageTrueRange(bars: readonly Bar[], period = 14): number {
+  if (bars.length < period + 1) return Number.NaN;
+  const ranges = bars.slice(-period).map((bar, index) => {
+    const previous = bars[bars.length - period + index - 1]?.close;
+    return Math.max(bar.high - bar.low, previous === undefined ? 0 : Math.abs(bar.high - previous), previous === undefined ? 0 : Math.abs(bar.low - previous));
+  });
+  return ranges.every(Number.isFinite) ? mean(ranges) : Number.NaN;
+}
+
 export function ema(values: readonly number[], period: number): number {
   if (values.length < period) return Number.NaN;
   const alpha = 2 / (period + 1);

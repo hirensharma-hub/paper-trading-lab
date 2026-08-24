@@ -94,3 +94,15 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 ## Safety status
 
 Paper trading only. There is no real-money broker adapter. TradingView remains display-only and is not a market-data source.
+
+## Final correctness-pass status
+
+- Target kind is derived from the injected TargetRegistry; unregistered targets and unavailable target state block new predictions/trades.
+- Triple-barrier ATR14 state is calculated from completed bars and frozen in PredictionRecord for later resolution.
+- Trusted analogues require a separately named TRAIN-fitted scaler profile and expose target-specific return/barrier rates.
+- ExecutionCostModel is active in intelligence EV and exposes separate entry/exit slippage plus currency and return units.
+- Evidence is report-backed with explicit NOT_TESTED/FAILED/PASSED statuses and provenance; caller booleans are not part of the trusted IntelligenceConfig.
+- Metric risk annualisation uses the declared sampling frequency; CAGR alone uses elapsed wall-clock time.
+- DatasetObservation V2 and integrity validation require point-in-time/provenance fields.
+
+The first historical pipeline-validation experiment is not claimed or auto-run in this pass because no permitted local historical dataset manifest/data fixture is present. No profitability or edge claim is made.

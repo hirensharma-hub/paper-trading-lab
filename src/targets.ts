@@ -3,6 +3,8 @@ import type { Bar } from "./domain";
 export type TargetKind = "FORWARD_CLOSE_RETURN" | "TRIPLE_BARRIER";
 export type AmbiguityPolicy = "AMBIGUOUS" | "CONSERVATIVE_DOWN";
 export interface TargetDefinition { targetVersion: string; kind: TargetKind; horizonBars: number; costThreshold?: number; upperBarrierMultiple?: number; lowerBarrierMultiple?: number; ambiguityPolicy?: AmbiguityPolicy; }
+export type TargetStateStatus = "AVAILABLE" | "WARMUP" | "MISSING_REQUIRED_INPUT" | "TARGET_UNREGISTERED";
+export interface TargetStateAtDecision { status: TargetStateStatus; values: Readonly<Record<string, number>>; featureVersions: readonly string[]; }
 export interface TargetResolution { targetVersion: string; targetKind: TargetKind; entryTimestamp: number; entryPrice: number; targetStartTimestamp: number; targetEndTimestamp: number; resolutionTimestamp: number; label: "LONG" | "SHORT" | "FLAT" | "UP" | "DOWN" | "TIMEOUT" | "AMBIGUOUS"; forwardReturn: number; mfe: number; mae: number; }
 export interface TargetResolver { readonly kind: TargetKind; resolve(definition: TargetDefinition, bars: readonly Bar[], entryIndex: number, atr?: number): TargetResolution | null; }
 export class TargetRegistry {

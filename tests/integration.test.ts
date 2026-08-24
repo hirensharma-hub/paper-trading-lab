@@ -41,6 +41,8 @@ import { JsonlExperienceRepository, JsonModelArtifactRepository, JsonPredictionQ
 import { ExitPolicy } from "../src/exit-policy";
 
 const bar = (symbol: string, i: number, close = 100 + i) => ({ symbol, startMs: i * 60_000, intervalMs: 60_000, open: close, high: close + 1, low: close - 1, close, volume: 100 + i });
+const predictionState = { featureTimestamp: 1, modelId: "m", featureSetVersion: "fset", featureIds: ["x"], rawProbability: 0.5, calibratedProbability: 0.5, targetStateAtDecision: { status: "AVAILABLE" as const, values: {}, featureVersions: [] } };
+const triplePredictionState = { ...predictionState, targetStateAtDecision: { status: "AVAILABLE" as const, values: { atrAtDecision: 1 }, featureVersions: ["atr14-v1"] } };
 const order = (id: string, side: "BUY" | "SELL" = "BUY", quantity = 10, limitPrice?: number) => ({ id, symbol: "SPY", side, type: limitPrice === undefined ? "MARKET" as const : "LIMIT" as const, quantity, limitPrice, status: "NEW" as const, strategyId: "test", strategyVersion: "1", reason: "unit test", fills: [] });
 
 class FixedDecisionEngine extends DecisionEngine {
@@ -277,8 +279,9 @@ test("historical analogues and evidence quality expose sample size instead of fa
   assert.equal(result.sampleSize, 20);
   assert.equal(result.evidence, "SUFFICIENT");
   assert.ok(result.regimeDistribution.UPTREND > 0);
-  assert.equal(assessEvidence({ sampleSize: 3, outOfSample: true, calibrated: true, costSurvives: true, regimeConsistent: true, parameterStable: true, recentStable: true }).quality, "INSUFFICIENT");
-  assert.ok(assessEvidence({ sampleSize: 100, outOfSample: true, calibrated: true, costSurvives: true, regimeConsistent: true, parameterStable: true, recentStable: true }).score > 0.9);
+  assert.equal(assessEvidence({ sampleSize: 3, regimeConsistent: true }).quality, "INSUFFICIENT");
+  const passed = { reportId: "r", status: "PASSED" as const };
+  assert.ok(assessEvidence({ sampleSize: 100, regimeConsistent: true, context: { outOfSampleReport: passed, calibrationReport: passed, costStressReport: passed, walkForwardReport: passed, parameterStabilityReport: passed, recentStabilityReport: passed } }).score > 0.9);
 });
 
 test("correctness gates prevent look-ahead and impossible breakouts", () => {
@@ -306,23 +309,21 @@ test("MFE/MAE start at the fill and risk sizing includes slippage", () => {
 test("metrics, intelligence, prediction resolution and model registry are integrated", () => {
   const year = 365.2425 * 24 * 60 * 60 * 1000;
   assert.ok(Math.abs(performanceMetrics([{ ts: 0, value: 100 }, { ts: year, value: 110 }]).cagr - 0.1) < 1e-9);
-  const model = { predictProbability: () => 0.9 };
-  const observations = Array.from({ length: 25 }, (_, index) => ({ features: Array(9).fill(0), featureVersion: "baseline-v1", targetVersion: "forward-close-1-v1", forwardReturn: 0.1, decisionTimestamp: index * 10_000, targetEndTimestamp: index * 10_000 + 5_000, regime: "UPTREND", mfe: 0.1, mae: -0.01 }));
-  const intelligence = new IntelligenceEngine({ model, analogues: observations, minimumAnalogueSample: 20, evidence: { outOfSample: true, calibrated: true, costSurvives: true, parameterStable: true, recentStable: true } });
+  const intelligence = new IntelligenceEngine();
   let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined;
   for (let i = 0; i < 20; i++) snapshot = intelligence.analyze(bar("SPY", i));
   assert.equal(new DecisionEngine().decide({ analysis: snapshot! }).action, "NO_TRADE"); assert.equal(snapshot?.evidence, undefined);
-  const prediction = resolvePrediction({ predictionId: "p1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 19, 100), { ...bar("SPY", 20, 105), open: 100 }]);
+  const prediction = resolvePrediction({ ...predictionState, predictionId: "p1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 19, 100), { ...bar("SPY", 20, 105), open: 100 }]);
   assert.equal(prediction?.resolved.label, "WIN"); assert.equal(prediction?.resolved.entryPrice, 100);
   const registry = new ModelRegistry(); registry.register({ modelId: "m1", version: "1", algorithm: "logistic", featureVersion: "f1", datasetVersion: "d1", metrics: { outOfSampleScore: 0.7 }, lifecycle: "CANDIDATE", createdAt: 1, evaluation: { sampleSize: 100, brier: 0.1, logLoss: 0.2, ece: 0.1, expectedValue: 0.1, maxDrawdown: 0.1, walkForwardStatus: "PASSED", costStressStatus: "PASSED", regimeCoverage: "PASSED", parameterStability: "PASSED" } });
-  assert.equal(registry.promote("m1", 0.6).lifecycle, "ACTIVE");
+  assert.equal(registry.promote("m1").lifecycle, "ACTIVE");
 });
 
 test("analogue and evidence gates are time-safe and do not invent validation", () => {
   const observations = [{ features: [0, 100], forwardReturn: 0.1, decisionTimestamp: 10, targetEndTimestamp: 15, regime: "UPTREND" }, { features: [0, 1], forwardReturn: -0.1, decisionTimestamp: 30, targetEndTimestamp: 35, regime: "RANGE" }];
   const result = nearestAnalogues([0, 1], observations, 10, 1, { asOfTimestamp: 20, requiredRegime: "UPTREND", scaler: { means: [0, 50], scales: [1, 50], fittedRows: 2 } });
   assert.equal(result.sampleSize, 1); assert.equal(result.meanForwardReturn, 0.1);
-  const cautious = new IntelligenceEngine({ model: { predictProbability: () => 0.99 }, analogues: Array.from({ length: 25 }, (_, index) => ({ features: Array(9).fill(0), featureVersion: "baseline-v1", targetVersion: "forward-close-1-v1", forwardReturn: 0.1, decisionTimestamp: index * 10_000, targetEndTimestamp: index * 10_000 + 5_000, regime: "UPTREND" })) });
+  const cautious = new IntelligenceEngine();
   let snapshot: ReturnType<IntelligenceEngine["analyze"]> | undefined; for (let i = 0; i < 20; i++) snapshot = cautious.analyze(bar("SPY", i));
   assert.equal(new DecisionEngine().decide({ analysis: snapshot! }).action, "NO_TRADE"); assert.equal(snapshot?.evidence, undefined);
 });
@@ -332,8 +333,8 @@ test("model bundles, decision policy, target registry, queue and durable artifac
   const bundle = new PredictiveModelBundle(artifact); assert.ok(bundle.predict({ x: 3 }).probability > 0.5); assert.equal(bundle.metadata().targetVersion, "forward-close-v1");
   const decision = new DecisionEngine({ minimumEvidence: "MODERATE" }).decide({ symbol: "SPY", timestamp: 1, features: null, structure: null, regime: null, patterns: [], decision: "BUY", reason: "x", evidence: { quality: "WEAK", score: 0.2, components: {} } }); assert.equal(decision.action, "NO_TRADE");
   const targets = new TargetRegistry(); targets.register({ targetVersion: "forward-close-2-v1", kind: "FORWARD_CLOSE_RETURN", horizonBars: 2 }); assert.equal(targets.get("forward-close-2-v1")?.horizonBars, 2);
-  const queue = new PredictionQueue(); queue.enqueue({ predictionId: "q1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }); assert.equal(queue.resolveAvailable([bar("SPY", 19, 100), bar("SPY", 20, 105)]).length, 1);
-  const directory = mkdtempSync(join(tmpdir(), "paper-lab-artifacts-")); try { const experiences = new JsonlExperienceRepository(join(directory, "experience.jsonl")); experiences.append(resolvePrediction({ predictionId: "p2", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.5, decision: "HOLD", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 19, 100), bar("SPY", 20, 101)])!); assert.equal(experiences.all().length, 1); const artifacts = new JsonModelArtifactRepository(join(directory, "models.jsonl")); artifacts.append(artifact); assert.equal(artifacts.all()[0].artifactId, "a1"); const pending = new JsonPredictionQueueRepository(join(directory, "pending.jsonl")); pending.append({ predictionId: "q2", symbol: "SPY", decisionTimestamp: 1, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.5, decision: "NO_TRADE", modelVersion: "m1", featureVersion: "f1" }); assert.equal(pending.all().length, 1); } finally { rmSync(directory, { recursive: true, force: true }); }
+  const queue = new PredictionQueue(); queue.enqueue({ ...predictionState, predictionId: "q1", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.7, decision: "BUY", modelVersion: "m1", featureVersion: "f1" }); assert.equal(queue.resolveAvailable([bar("SPY", 19, 100), bar("SPY", 20, 105)]).length, 1);
+  const directory = mkdtempSync(join(tmpdir(), "paper-lab-artifacts-")); try { const experiences = new JsonlExperienceRepository(join(directory, "experience.jsonl")); experiences.append(resolvePrediction({ ...predictionState, predictionId: "p2", symbol: "SPY", decisionTimestamp: 20 * 60_000, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.5, decision: "HOLD", modelVersion: "m1", featureVersion: "f1" }, [bar("SPY", 19, 100), bar("SPY", 20, 101)])!); assert.equal(experiences.all().length, 1); const artifacts = new JsonModelArtifactRepository(join(directory, "models.jsonl")); artifacts.append(artifact); assert.equal(artifacts.all()[0].artifactId, "a1"); const pending = new JsonPredictionQueueRepository(join(directory, "pending.jsonl")); pending.append({ ...predictionState, predictionId: "q2", symbol: "SPY", decisionTimestamp: 1, horizonBars: 1, targetVersion: "forward-close-1-v1", probability: 0.5, decision: "NO_TRADE", modelVersion: "m1", featureVersion: "f1" }); assert.equal(pending.all().length, 1); } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
 test("engine refuses stale market data and local service exposes safe controls", async () => {
@@ -370,7 +371,7 @@ test("critical correctness gates enforce separation, schema, costs, OOD, and sha
   const broker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }); const integrated = new IntegratedPaperResearchEngine(new IntelligenceEngine(), new DecisionEngine(), broker, new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 })); const replay = replayIntegrated([{ bar: bar("SPY", 0), quote: { symbol: "SPY", ts: 60_001, bid: 99, ask: 100, last: 99.5 } }], integrated); assert.equal(replay.finalEquity, 10_000); assert.equal(replay.trades.length, 0); assert.equal(integrated.health.dataFresh, true);
   const staleIntegrated = new IntegratedPaperResearchEngine(new IntelligenceEngine(), new DecisionEngine(), new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }), new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 })); staleIntegrated.setOperationalNow(200_000); assert.equal(staleIntegrated.onBar(bar("AAPL", 0), { symbol: "AAPL", ts: 60_000, bid: 99, ask: 100 }).decision.reason, "Market data is stale"); assert.equal(staleIntegrated.health.bars, 0);
   const futureEngine = new ResearchEngine(new EmaCrossStrategy(), new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 }), new RiskManager({ maxPositionValue: 1_000, maxGrossExposure: 2_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 10, feeBps: 0 })); futureEngine.setOperationalNow(100_000); assert.equal(futureEngine.onBar(bar("QQQ", 0), { symbol: "QQQ", ts: 101_500, bid: 99, ask: 100 }).reason, "Quote is from the future"); assert.equal(futureEngine.health.bars, 0);
-  const triple = resolvePrediction({ predictionId: "tb", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "triple-barrier-1-u1-d1-v1", targetParameters: { atr: 1 }, probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [{ ...bar("SPY", 0, 100) }, { ...bar("SPY", 1, 100), high: 102, low: 100 }]); assert.equal(triple?.resolved.label, "WIN");
+  const triple = resolvePrediction({ ...triplePredictionState, predictionId: "tb", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "triple-barrier-1-u1-d1-v1", targetParameters: { atr: 1 }, probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [{ ...bar("SPY", 0, 100) }, { ...bar("SPY", 1, 100), high: 102, low: 100 }]); assert.equal(triple?.resolved.label, "WIN");
 });
 
 test("integrated engine exhaustively maps BUY, SELL, HOLD, and NO_TRADE without fall-through", () => {
@@ -408,6 +409,6 @@ test("integrated portfolio marks include every symbol and replay updates MFE/MAE
 });
 
 test("triple-barrier resolution preserves AMBIGUOUS and target horizon authority", () => {
-  const ambiguous = resolvePrediction({ predictionId: "amb", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "triple-barrier-1-u1-d1-v1", targetParameters: { atr: 1 }, probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [{ ...bar("SPY", 0, 100) }, { ...bar("SPY", 1, 100), high: 102, low: 98 }]); assert.equal(ambiguous?.resolved.label, "AMBIGUOUS");
-  const registry = new TargetRegistry(); registry.register({ targetVersion: "fixed-h2", kind: "FORWARD_CLOSE_RETURN", horizonBars: 2 }); assert.equal(resolvePrediction({ predictionId: "wrong", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "fixed-h2", probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [bar("SPY", 0), bar("SPY", 1), bar("SPY", 2)], registry), null);
+  const ambiguous = resolvePrediction({ ...triplePredictionState, predictionId: "amb", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "triple-barrier-1-u1-d1-v1", targetParameters: { atr: 1 }, probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [{ ...bar("SPY", 0, 100) }, { ...bar("SPY", 1, 100), high: 102, low: 98 }]); assert.equal(ambiguous?.resolved.label, "AMBIGUOUS");
+  const registry = new TargetRegistry(); registry.register({ targetVersion: "fixed-h2", kind: "FORWARD_CLOSE_RETURN", horizonBars: 2 }); assert.equal(resolvePrediction({ ...predictionState, predictionId: "wrong", symbol: "SPY", decisionTimestamp: 60_000, horizonBars: 1, targetVersion: "fixed-h2", probability: 0.5, decision: "HOLD", modelVersion: "m", featureVersion: "f" }, [bar("SPY", 0), bar("SPY", 1), bar("SPY", 2)], registry), null);
 });

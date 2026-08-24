@@ -51,6 +51,14 @@
 - [ ] Persisted walk-forward artifacts, validation-only calibration and reproducible model registry storage
 - [ ] Automated promotion report from target-consistent test outcomes
 
+## Final correctness pass status (2026-08-24)
+
+- [x] Shared target registry interpretation, unknown-target blocking and frozen triple-barrier ATR state
+- [x] TRAIN-fitted trusted analogue normalization and target-specific outcome rates
+- [x] Report-backed evidence, active cost-aware EV and explicit metric sampling annualisation
+- [x] Trusted DatasetObservation provenance/integrity primitives and configurable promotion policy
+- [ ] First local historical pipeline-validation experiment — requires a permitted dataset manifest and local historical data
+
 ## Phase 6 — Local paper-live workflow
 
 - [x] Local engine HTTP API, explicit origin allowlist, protocol metadata and safe extension protocol
