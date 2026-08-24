@@ -1,6 +1,6 @@
 # Project State
 
-The offline ExperimentRunner V2 and CLI execute a real deterministic pipeline for permitted CSV input and synthetic data, including data/hash gates, point-in-time labels, calibration, untouched TEST metrics, and candidate-only artifact manifests. Historical validation remains pending permitted data.
+The offline ExperimentRunner V2 and CLI execute a real deterministic pipeline for permitted CSV input and synthetic data, including data/hash/session gates, point-in-time labels with planned versus outcome-availability timestamps, strict label policy, chronological purge, TRAIN-only fitting, calibration, untouched TEST metrics, honest report statuses, persisted strict artifacts, and candidate-only lifecycle. Historical validation remains pending permitted data.
 
 Updated: 2026-08-24
 
@@ -106,5 +106,6 @@ Paper trading only. There is no real-money broker adapter. TradingView remains d
 - Evidence is report-backed with explicit NOT_TESTED/FAILED/PASSED statuses and provenance; caller booleans are not part of the trusted IntelligenceConfig.
 - Metric risk annualisation uses the declared sampling frequency; CAGR alone uses elapsed wall-clock time.
 - DatasetObservation V2 and integrity validation require point-in-time/provenance fields.
+- `npm run typecheck:tests` covers every `tests/**/*.test.ts` file in CI; the fixtures use the current strict decision, evidence, label-policy and model contracts.
 
 The first historical pipeline-validation experiment is not claimed or auto-run in this pass because no permitted local historical dataset manifest/data fixture is present. No profitability or edge claim is made.

@@ -23,6 +23,7 @@ From this directory:
 ```bash
 npm install
 npm run typecheck
+npm run typecheck:tests
 npm test
 ```
 
@@ -70,7 +71,7 @@ See [RESEARCH_IMPLEMENTATION.md](RESEARCH_IMPLEMENTATION.md) for a topic-by-topi
 
 `npm run experiment -- --synthetic` runs a deterministic end-to-end synthetic pipeline: point-in-time observations, triple-barrier labels, chronological splits, purge validation, TRAIN-only scaling and analogue fitting, logistic training, validation selection, calibration, untouched TEST metrics, and a candidate artifact manifest. Synthetic output is explicitly not historical market evidence.
 
-With a permitted CSV and JSON configuration containing `manifest` and experiment fields, run `npm run experiment -- --data ./data/sample.csv --config ./experiments/config.json --output ./artifacts/experiment-001`. The runner is paper-only and never places live orders.
+With a permitted CSV and JSON configuration containing `manifest` and experiment fields, run `npm run experiment -- --data ./data/sample.csv --config ./experiments/config.json --output ./artifacts/experiment-001`. The runner is paper-only and never places live orders. The output includes the strict model artifact, TRAIN analogue scaler, calibration/OOD/test diagnostics, honest research-report statuses, replay/benchmark reports, and a hash manifest. OOS, cost-stress, walk-forward and stability evidence is never marked passed without a genuine corresponding test.
 
 ## Research discipline
 
