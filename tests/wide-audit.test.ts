@@ -17,6 +17,13 @@ test("synthetic evidence cannot silently become historical readiness", () => {
   assert.equal(report.historicalReadiness?.checks.manifestProvenance, false);
 });
 
+test("calibration evidence availability follows label knowledge", () => {
+  const report = new ExperimentRunner().syntheticSmoke();
+  const calibration = report.researchReports?.calibration;
+  assert.ok(calibration?.generatedAt !== undefined && calibration.availableAtTimestamp !== undefined);
+  assert.equal(calibration?.generatedAt, calibration?.availableAtTimestamp);
+});
+
 test("calendar provenance is versioned and deterministic", () => {
   const first = exchangeCalendarSpec({ timeZone: "America/New_York" });
   const second = exchangeCalendarSpec({ timeZone: "America/New_York" });
