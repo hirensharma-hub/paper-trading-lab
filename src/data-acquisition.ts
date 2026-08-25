@@ -131,7 +131,7 @@ export class TwelveDataProvider implements HistoricalDataProvider {
       cursor = next.getTime();
     }
     const unique = new Map<string, Bar>();
-    for (const bar of rawRows) { const key = `${bar.symbol}:${bar.startMs}`; if (unique.has(key)) duplicateCount++; else unique.set(key, bar); }
+    for (const bar of rawRows) { const key = `${bar.symbol}:${bar.startMs}`; const existing = unique.get(key); if (existing) { const identical = existing.intervalMs === bar.intervalMs && existing.open === bar.open && existing.high === bar.high && existing.low === bar.low && existing.close === bar.close && existing.volume === bar.volume; if (!identical) throw new Error("CONFLICTING_DUPLICATE_PROVIDER_BAR"); duplicateCount++; } else unique.set(key, bar); }
     const bars = [...unique.values()].sort((a, b) => a.startMs - b.startMs);
     return { bars, provider: this.providerId, requested: request, rawResponseCount, metadata: { endpoint: "time_series", timezone: "UTC", apiInterval, chunkDays: initialChunkDays, chunks, rawResponseCount, normalizedBarCount: rawRows.length, duplicateCount, rejectedProviderRows, rejectionReasons, emptyChunkCount, missingChunkPolicy: "EXPLICITLY_RECORDED_NOT_FILLED", retrievedAt: new Date().toISOString(), apiKeyPersisted: false } };
   }

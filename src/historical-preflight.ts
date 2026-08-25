@@ -38,12 +38,16 @@ export function runHistoricalPreflight(manifest: DatasetManifest, bars: readonly
     check("DATASET_ID_VALID", /^[A-Za-z0-9._-]+$/.test(manifest.datasetId), "Dataset ID is stable and non-empty", "stable identifier", manifest.datasetId),
     check("DATASET_VERSION_VALID", manifest.datasetVersion.trim().length > 0, "Dataset version is explicit"),
     check("SYMBOL_UNIVERSE_MATCH", dataQuality.symbols.join("\u0000") === [...manifest.symbols].sort().join("\u0000"), "Observed symbols equal manifest symbols", manifest.symbols, dataQuality.symbols),
+    check("INPUT_ORDER_VALID", !dataQuality.issues.some((issue) => issue.startsWith("NON_MONOTONIC")), "Input bars are chronological within each symbol"),
+    check("NO_UNDECLARED_SYMBOLS", !dataQuality.issues.some((issue) => issue.startsWith("UNDECLARED_SYMBOL")), "No bar uses an undeclared symbol"),
     check("BAR_INTERVAL_MATCH", dataQuality.issues.every((issue) => !issue.startsWith("INTERVAL_MISMATCH")), "Every bar uses the manifest interval", manifest.barIntervalMs),
     check("TIMESTAMP_RANGE_MATCH", dataQuality.issues.every((issue) => !issue.startsWith("OUT_OF_RANGE")), "Every bar is within the manifest range"),
     check("OHLCV_VALID", dataQuality.invalidRows === 0, "All OHLCV rows pass validation", 0, dataQuality.invalidRows),
     check("NO_DUPLICATE_BARS", dataQuality.duplicateRows === 0, "No duplicate symbol/timestamp bars", 0, dataQuality.duplicateRows),
     check("NO_UNEXPECTED_GAPS", dataQuality.unexpectedGaps === 0, "No unexpected gaps or incomplete sessions", 0, dataQuality.unexpectedGaps),
     check("SESSION_COVERAGE_VALID", !dataQuality.issues.some((issue) => issue.startsWith("OUTSIDE_EXPECTED_SESSION") || issue.startsWith("MISSING_SESSION")), "Session coverage matches manifest policy"),
+    check("NO_OUTSIDE_SESSION_BARS", !dataQuality.issues.some((issue) => issue.startsWith("OUTSIDE_EXPECTED_SESSION")), "No bar is outside the declared session"),
+    check("NO_MISSING_REQUIRED_SESSIONS", !dataQuality.issues.some((issue) => issue.startsWith("MISSING_SESSION")), "All required sessions and bars are present"),
     check("CALENDAR_ID_MATCH", manifest.calendarId === calendarSpec.calendarId, "Calendar ID matches resolved calendar", calendarSpec.calendarId, manifest.calendarId),
     check("CALENDAR_VERSION_MATCH", manifest.calendarSpecVersion === calendarSpec.version, "Calendar version matches resolved calendar", calendarSpec.version, manifest.calendarSpecVersion),
     check("CALENDAR_HASH_MATCH", manifest.calendarSpecHash === calendarSpec.contentHash, "Calendar hash matches resolved calendar", calendarSpec.contentHash, manifest.calendarSpecHash),
@@ -51,7 +55,8 @@ export function runHistoricalPreflight(manifest: DatasetManifest, bars: readonly
     check("CORPORATE_ACTION_STATUS_SAFE", manifest.corporateActionStatus === "NONE_IN_RANGE" || manifest.corporateActionStatus === "HANDLED" || manifest.assetClass === "OTHER", "Corporate-action status is safe", ["NONE_IN_RANGE", "HANDLED"], manifest.corporateActionStatus),
     check("FEATURE_SET_VERSION_MATCH", manifest.featureSetVersion === "baseline-ohlcv-v2", "Feature set version is supported", "baseline-ohlcv-v2", manifest.featureSetVersion),
     check("TARGET_VERSION_MATCH", manifest.targetVersion === "triple-barrier-next-open-20-u1.5-d1-v1", "Target version is supported", "triple-barrier-next-open-20-u1.5-d1-v1", manifest.targetVersion),
-    check("LABEL_POLICY_VERSION_MATCH", manifest.labelPolicyVersion === "tb-up-vs-down-exclude-timeout-ambiguous-v1", "Label policy version is supported", "tb-up-vs-down-exclude-timeout-ambiguous-v1", manifest.labelPolicyVersion)
+    check("LABEL_POLICY_VERSION_MATCH", manifest.labelPolicyVersion === "tb-up-vs-down-exclude-timeout-ambiguous-v1", "Label policy version is supported", "tb-up-vs-down-exclude-timeout-ambiguous-v1", manifest.labelPolicyVersion),
+    check("DATA_QUALITY_ALL_CLEAR", dataQuality.issues.length === 0, "Every data-quality issue is covered and cleared", 0, dataQuality.issues)
   ];
   const blockingReasons = checks.filter((item) => !item.passed).map((item) => item.code); return { passed: blockingReasons.length === 0, checks, blockingReasons, canonicalDatasetHash: actualHash, dataQuality, calendarSpec, sessionCount: new Set(bars.map((bar) => calendar.sessionKey(bar.startMs))).size };
 }
