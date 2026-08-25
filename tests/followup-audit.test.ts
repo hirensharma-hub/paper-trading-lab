@@ -36,3 +36,10 @@ test("broker affordability uses side-specific entry fees", () => {
   broker.submit({ id: "b", symbol: "SPY", side: "BUY", type: "MARKET", quantity: 1, strategyId: "t", strategyVersion: "1", reason: "test", submittedAt: 1, status: "NEW", fills: [] });
   assert.equal(broker.onQuote({ symbol: "SPY", ts: 2, bid: 100, ask: 100 }).length, 0);
 });
+
+test("runtime mode governance keeps paper deployment behind current OOS evidence", () => {
+  const calibration = { reportId: "cal", status: "PASSED" as const, sampleSize: 100, modelId: "m", modelVersion: "1", experimentId: "e", generatedAt: 120, availableAtTimestamp: 120 };
+  const input = { sampleSize: 100, decisionTimestamp: 130, context: { modelId: "m", modelVersion: "1", experimentId: "e", calibrationReport: calibration }, expectedProvenance: { modelId: "m", modelVersion: "1", experimentId: "e" } };
+  assert.equal(assessEvidence({ ...input, required: { requireOutOfSample: true } }).gatesPassed, false);
+  assert.equal(assessEvidence({ ...input, required: {} }).gatesPassed, true);
+});

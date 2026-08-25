@@ -68,6 +68,7 @@
 - [x] Local engine HTTP API, explicit origin allowlist, protocol metadata and safe extension protocol
 - [x] Stale-data halt, health endpoint, pause and kill-switch controls
 - [x] Integrated intelligence/decision/risk/broker replay path shared with the local service
+- [x] Adversarial replay audit: explicit WARMUP/TEST/OUTCOME_TAIL/SETTLEMENT phases, decision-window equity, settlement equity, delayed-intent execution audits, and cryptographic exchange-calendar provenance
 - [x] Critical temporal, provenance, schema, OOD, cost, CORS, freshness and request-validation guards
 - [ ] Permitted licensed market-data adapter
 - [ ] Paper-forward monitoring and dashboard expansion
