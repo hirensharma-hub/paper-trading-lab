@@ -17,6 +17,11 @@ This audit covers the final implementation pass for the paper-only historical re
 - Intent lifecycle identities reconcile exactly, decision-window start equity is captured before TEST fills, and annualisation is centralized.
 - Hourly resampling explicitly excludes the incomplete session-close bucket; its policy is recorded in quality metadata.
 - The frozen runtime records explicit origin, canonical dataset/calendar hashes, settlement and threshold provenance, and the full artifact manifest records paths, schemas, sizes, and hashes.
+- `src/historical-preflight.ts` is the authoritative dataset/manifest preflight used by `validate-data`, `validateManifest`, and `ExperimentRunner`; its machine-readable checks cover origin, permission, hashes, calendar, quality, session coverage, corporate actions, feature, target, and label versions.
+- `splits:suggest` uses `TradingCalendar.sessionKey()` boundaries and reserves a 20-eligible-bar outcome tail; insufficient session counts fail with a dataset-size error.
+- Runtime feature parity is measured against TEST observations and recorded as checked count, mismatch count, IDs, maximum absolute difference, feature version, and feature IDs.
+- The optional Twelve Data adapter is read-only, uses `TWELVE_DATA_API_KEY` from the environment, chunks/retries requests, normalizes/deduplicates/sorts OHLCV, and writes a provenance sidecar without permission claims or secrets.
+- Artifact output includes the required preflight, eligibility, split/purge, prediction/experience, intent/execution, order/fill/trade, settlement, benchmark, readiness, and reproducibility files; every artifact entry is verified for existence, size, and SHA-256 before completion.
 
 ## Verification commands
 
@@ -27,7 +32,7 @@ npm run typecheck:tests
 npm test
 ```
 
-Result: the full suite and targeted adversarial replay suite pass; both TypeScript checks pass; the clean dependency install and GitHub Actions workflow are required release gates and are rerun for each final push.
+Result: 96 tests passed, 0 failed; both TypeScript checks pass; the clean dependency install, smoke CLI, full temporary fixture workflow, and GitHub Actions workflow pass. The temporary fixture is explicitly synthetic and its historical readiness is false.
 
 ## Remaining limitation
 

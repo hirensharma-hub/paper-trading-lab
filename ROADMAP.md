@@ -70,7 +70,7 @@
 - [x] Integrated intelligence/decision/risk/broker replay path shared with the local service
 - [x] Adversarial replay audit: explicit WARMUP/TEST/OUTCOME_TAIL/SETTLEMENT phases, decision-window equity, settlement equity, delayed-intent execution audits, and cryptographic exchange-calendar provenance
 - [x] Critical temporal, provenance, schema, OOD, cost, CORS, freshness and request-validation guards
-- [ ] Permitted licensed market-data adapter
+- [x] Optional read-only historical-data acquisition adapter with provenance sidecar and secret-safe CLI
 - [ ] Paper-forward monitoring and dashboard expansion
 
 Real-money execution is out of scope.

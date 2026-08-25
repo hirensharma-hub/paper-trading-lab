@@ -2,7 +2,7 @@
 
 The offline ExperimentRunner V2 and CLI execute a real deterministic pipeline for permitted CSV input and synthetic data, including data/hash/full-session gates, point-in-time labels with trading-bar planned versus outcome-availability timestamps, explicit decision/outcome windows, configured-boundary purge, TRAIN-only fitting and calibration, untouched TEST metrics, post-test evidence availability, persisted fit ranges, frozen-runtime identity, delayed-intent paper replay, cost-aware benchmarks and candidate-only lifecycle. Historical validation remains pending permitted data.
 
-Updated: 2026-08-24
+Updated: 2026-08-25
 
 ## Current phase
 
@@ -87,10 +87,11 @@ Phase 5 — target-consistent predictive research and controlled experience; no 
 - Completed the temporal/execution fidelity pass: current OOS evidence is post-test and excluded from the pre-test runtime context; evidence availability is checked against the decision timestamp; horizons use eligible trading bars; purge uses explicit configured boundaries; split/replay/journal ordering uses quote-aware decision timestamps; delayed next-open intents are risk-sized at the actual opening quote; opening spread is applied once before broker slippage/fees; entry and exit methods are independent; actual broker submission drives order-rate accounting; pending end-of-test intents are cancelled and reported; and the replay exposes outcome tails, execution-time risk outcomes, actual Intelligence EV and reason-code counts.
 - Added `HistoricalReadinessReport` with explicit full-session, gap, corporate-action, split, purge, scaler/calibration isolation, temporal-evidence, target, execution, cost and metric-quality gates. It remains false for synthetic smoke output and until a permitted historical dataset is actually validated.
 - Wide adversarial audit fixes: deferred next-open signals now journal `EXECUTION_INTENT_CREATED` and emit `RISK_APPROVED` only after execution-time risk sizing; unsupported `WALL_CLOCK` targets fail closed; calendar specifications carry a deterministic version/hash in frozen runtime metadata; and readiness checks now expose structured code/detail/observed/expected evidence instead of tautological booleans.
+- Final historical handoff pass: `src/historical-preflight.ts` is shared by CLI and ExperimentRunner; manifest initialization generates canonical/calendar provenance; session-aligned split suggestion reserves the outcome tail; measured TEST feature parity is persisted; optional Twelve Data acquisition is read-only and secret-safe; artifact manifests are cryptographically verified; and the complete temporary CLI workflow is covered by regression tests.
 
 ## Known limitations
 
-- No licensed real-time market-data adapter exists yet; the current provider is file/in-memory/CSV-file only. The local HTTP service accepts normalized events but does not fetch external prices.
+- No live market feed exists and no real-time acquisition is implemented. The optional Twelve Data module is historical-data-only, separate from the local paper service and broker.
 - SQLite/IndexedDB persistence and a fuller UI/API contract remain future work; the current durable store is a deliberately dependency-light JSONL/JSON implementation and the local API is intentionally small.
 - Stop orders, cancellation, richer partial-fill queue models and shorting/leverage are not implemented.
 - Backtest replay requires normalized bar+quote events and now exposes snapshots, closed trades and metrics; durable persistence remains planned.

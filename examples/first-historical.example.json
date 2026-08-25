@@ -23,5 +23,8 @@
   "metricFrequency": "1m",
   "gapPolicy": "REJECT_UNEXPECTED_GAP",
   "paperOnly": true,
-  "manifest": { "$ref": "./historical-manifest.example.json" }
+  "runtimeMode": "RESEARCH_EVALUATION",
+  "executionPolicy": { "version": "next-bar-open-v1", "entryMethod": "NEXT_BAR_OPEN", "exitMethod": "NEXT_BAR_OPEN" },
+  "decisionPolicy": { "minimumEvidence": "WEAK", "entryProbability": 0.55 },
+  "exitPolicy": { "version": "historical-exit-v1", "maxHoldMs": 3600000 }
 }

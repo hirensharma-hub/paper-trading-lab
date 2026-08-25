@@ -18,7 +18,7 @@
   "calendarId": "REPLACE_WITH_EXCHANGE_CALENDAR",
   "calendarSpecVersion": "REPLACE_WITH_GENERATED_CALENDAR_VERSION",
   "calendarSpecHash": "REPLACE_WITH_GENERATED_CALENDAR_HASH",
-  "contentHash": "AUTO",
+  "contentHash": "REPLACE_WITH_MANIFEST_INIT_CANONICAL_HASH",
   "canonicalizationVersion": "bars-canonical-json-v1",
   "createdAt": 0,
   "dataQualitySummary": { "totalRows": 0, "acceptedRows": 0, "rejectedRows": 0, "duplicateRows": 0, "invalidRows": 0, "unexpectedGaps": 0, "symbols": [], "issues": [] },
