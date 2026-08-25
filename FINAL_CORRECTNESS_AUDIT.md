@@ -40,4 +40,4 @@ No permitted, user-supplied historical market dataset has been provided or valid
 
 ## Verdict
 
-**READY FOR USER-SUPPLIED PERMITTED HISTORICAL DATA**
+**READY FOR FIRST PERMITTED HISTORICAL PAPER-RESEARCH EXPERIMENT**
