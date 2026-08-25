@@ -1,4 +1,11 @@
+import { createHash } from "node:crypto";
 import type { Bar, Quote } from "./domain";
+
+export const BAR_CANONICALIZATION_VERSION = "bars-canonical-json-v1" as const;
+export type DatasetOrigin = "EXTERNAL_HISTORICAL_FILE" | "SYNTHETIC_FIXTURE";
+export function canonicalizeBars(bars: readonly Bar[]): readonly [string, number, number, number, number, number, number, number][] { return [...bars].map((bar) => [String(bar.symbol), Number(bar.startMs), Number(bar.intervalMs), Number(bar.open), Number(bar.high), Number(bar.low), Number(bar.close), Number(bar.volume)] as [string, number, number, number, number, number, number, number]).sort((a, b) => String(a[0]).localeCompare(String(b[0])) || Number(a[1]) - Number(b[1])); }
+export function canonicalDatasetHash(bars: readonly Bar[]): string { return createHash("sha256").update(JSON.stringify({ version: BAR_CANONICALIZATION_VERSION, rows: canonicalizeBars(bars) })).digest("hex"); }
+export function parseTimestampStrict(raw: string): number { const value = raw.trim(); if (/^[+-]?\d+$/.test(value)) { const timestamp = Number(value); if (Number.isSafeInteger(timestamp)) return timestamp; } if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/.test(value)) throw new Error(`TIMESTAMP_FORMAT_REJECTED:${raw}`); const timestamp = Date.parse(value); if (!Number.isFinite(timestamp)) throw new Error(`TIMESTAMP_INVALID:${raw}`); return timestamp; }
 
 export function validateBar(bar: Bar): void {
   if (!bar.symbol || !Number.isInteger(bar.startMs) || bar.intervalMs <= 0) throw new Error("Invalid bar identity or interval");

@@ -84,3 +84,16 @@ Historical output includes `historicalReadiness`. `readyForInterpretation` is fa
 ## Research discipline
 
 Every experiment should record dataset version, point-in-time feature policy, strategy/version, cost model, parameters, random seed, in-sample/validation/out-of-sample ranges and all tested configurations. A candidate model may only replace an active model after time-ordered validation and forward paper evidence show a robust improvement after costs.
+## Historical-data workflow
+
+The repository is paper-only. For a permitted external CSV or JSON file:
+
+```bash
+npm ci
+npm run manifest:init -- --data ./bars.csv --symbols SPY --interval 60000 --timezone America/New_York --out manifest.json
+# Confirm source, licenceNotes, permittedForResearch, corporateActionStatus, calendar fields, and split boundaries.
+npm run validate-data -- --data ./bars.csv --manifest manifest.json --suggest-splits --output validation.json
+npm run experiment -- --data ./bars.csv --config experiment-config.json --output artifacts
+```
+
+Timestamps must be epoch milliseconds or ISO-8601 with `Z` or an explicit offset. Multi-symbol files must include a `symbol` column. Synthetic output is explicitly labelled and never counts as historical readiness. Use `npm run experiment:smoke` for the deterministic offline fixture.

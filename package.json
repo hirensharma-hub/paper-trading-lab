@@ -9,7 +9,10 @@
     "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "service": "tsx src/service-main.ts",
-    "experiment": "tsx src/experiment-cli.ts"
+    "experiment": "tsx src/experiment-cli.ts",
+    "experiment:smoke": "tsx src/experiment-cli.ts --synthetic --output /tmp/paper-trading-lab-smoke --overwrite",
+    "manifest:init": "tsx src/data-cli.ts manifest:init",
+    "validate-data": "tsx src/data-cli.ts validate-data"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
