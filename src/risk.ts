@@ -8,6 +8,10 @@ export interface RiskConfig {
   maxOrdersPerMinute: number;
   feeBps: number;
   slippageBps?: number;
+  entryFeeBps?: number;
+  exitFeeBps?: number;
+  entrySlippageBps?: number;
+  exitSlippageBps?: number;
 }
 
 export interface RiskState {
@@ -45,7 +49,9 @@ export class RiskManager {
     const symbolCapacity = Math.max(0, this.config.maxPositionValue - currentSymbolExposure);
     const grossCapacity = Math.max(0, this.config.maxGrossExposure - currentGross);
     const headroom = Math.min(symbolCapacity, grossCapacity);
-    const executionPrice = referencePrice * (1 + (this.config.slippageBps ?? 0) / 10_000) * (1 + this.config.feeBps / 10_000);
+    const slippageBps = intent.side === "BUY" ? this.config.entrySlippageBps ?? this.config.slippageBps ?? 0 : this.config.exitSlippageBps ?? this.config.slippageBps ?? 0;
+    const feeBps = intent.side === "BUY" ? this.config.entryFeeBps ?? this.config.feeBps : this.config.exitFeeBps ?? this.config.feeBps;
+    const executionPrice = referencePrice * (1 + slippageBps / 10_000) * (1 + feeBps / 10_000);
     const quantity = Math.floor(Math.min(intent.quantity, headroom / executionPrice));
     return quantity > 0 ? { allowed: true, quantity } : { allowed: false, reason: "Exposure limit leaves no order capacity" };
   }

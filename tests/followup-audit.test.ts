@@ -6,6 +6,8 @@ import { resolvePrediction, TripleBarrierResolver } from "../src/experience";
 import { TargetRegistry } from "../src/targets";
 import { assessEvidence, isReportAvailableAt, validateReportAvailability } from "../src/evidence";
 import { PaperBroker } from "../src/broker";
+import { DecisionEngine, resolveDecisionGatePolicy } from "../src/decision";
+import { ExperimentRunner } from "../src/experiment";
 
 const bar = (startMs: number, open = 100) => ({ symbol: "SPY", startMs, intervalMs: 60_000, open, high: open + .1, low: open - .1, close: open, volume: 1 });
 
@@ -42,4 +44,24 @@ test("runtime mode governance keeps paper deployment behind current OOS evidence
   const input = { sampleSize: 100, decisionTimestamp: 130, context: { modelId: "m", modelVersion: "1", experimentId: "e", calibrationReport: calibration }, expectedProvenance: { modelId: "m", modelVersion: "1", experimentId: "e" } };
   assert.equal(assessEvidence({ ...input, required: { requireOutOfSample: true } }).gatesPassed, false);
   assert.equal(assessEvidence({ ...input, required: {} }).gatesPassed, true);
+});
+
+test("runtime gate policy permits untouched-test research evaluation without OOS while paper deployment blocks", () => {
+  const snapshot = { symbol: "SPY", decisionTimestamp: 130, features: {}, targetState: { status: "AVAILABLE", values: {}, featureVersions: [] }, prediction: { predictionId: "p", modelId: "m", modelVersion: "1", featureSetVersion: "f", featureIds: [], targetVersion: "t", rawProbability: .9, calibratedProbability: .9, probability: .9, ood: { status: "IN_DISTRIBUTION", maxAbsZ: 0 } }, evidence: { quality: "WEAK", score: .35, gatesPassed: true, components: {}, provenance: {}, ruleVersion: "evidence-rules-v2" }, expectedValue: .1, expectedValueEstimate: { value: .1, unit: "RETURN", methodVersion: "t", referencePrice: 100, referenceMethod: "QUOTE_MID", grossExpectedValue: .2, executionCost: .1, netExpectedValue: .1 } } as any;
+  const research = new DecisionEngine(resolveDecisionGatePolicy("RESEARCH_EVALUATION", undefined));
+  const paper = new DecisionEngine(resolveDecisionGatePolicy("PAPER_DEPLOYMENT", undefined));
+  assert.equal(research.decide({ analysis: snapshot }).action, "BUY");
+  assert.equal(paper.decide({ analysis: snapshot }).action, "NO_TRADE");
+});
+
+test("historical-like research fixture uses the research gate without synthetic bypass", () => {
+  const report = new ExperimentRunner().historicalLikeResearchSmoke();
+  assert.equal(report.status, "COMPLETED");
+  assert.equal(report.dataKind, "HISTORICAL");
+  assert.equal(report.config?.unsafeSyntheticBypassResearchGates, false);
+  assert.equal(report.config?.decisionPolicy?.unsafeSyntheticBypassResearchGates, false);
+  assert.ok((report.integratedReplay?.actionCounts?.BUY ?? 0) > 0);
+  assert.equal(report.historicalReadiness?.checks.targetTradingBarHorizon, true);
+  assert.equal(report.historicalReadiness?.checks.trainScalerIsolation, true);
+  assert.equal(report.historicalReadiness?.checks.calibrationIsolation, true);
 });
