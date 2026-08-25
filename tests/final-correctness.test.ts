@@ -16,7 +16,7 @@ import { RiskManager } from "../src/risk";
 
 const fitTrustedAnalogueScaler = unsafeFitTrustedAnalogueScalerRaw;
 
-const ids = ["ret1", "ret5", "emaFastDistance", "emaSlowDistance", "rsi14Normalized", "realisedVol20", "volumeZ", "spreadBps", "bookImbalance"] as const;
+const ids = ["ret1", "ret5", "emaFastDistance", "emaSlowDistance", "rsi14Normalized", "realisedVol20", "volumeZ"] as const;
 const artifact = (targetVersion: string): ModelArtifact => ({ artifactId: `a-${targetVersion}`, modelId: "model-1", modelVersion: "1", algorithm: "logistic-regression", featureVersion: "baseline-v1", featureSetVersion: "baseline-named-v1", featureIds: ids, targetVersion, scaler: { means: ids.map(() => 0), scales: ids.map(() => 1), fittedRows: 20 }, model: { weights: ids.map(() => 0), bias: 2 }, oodProfile: { featureSetVersion: "baseline-named-v1", featureIds: ids, means: ids.map(() => 0), scales: ids.map(() => 1), minimums: ids.map(() => -10), maximums: ids.map(() => 10) }, createdAt: 1 });
 const bars = Array.from({ length: 20 }, (_, i) => ({ symbol: "SPY", startMs: i * 60_000, intervalMs: 60_000, open: 100 + i, high: 101 + i, low: 99 + i, close: 100 + i, volume: 100 }));
 const registry = (definition: TargetDefinition) => { const value = new TargetRegistry(); value.register(definition); value.registerResolver(new ForwardCloseReturnResolver()); value.registerResolver(new TripleBarrierResolver()); return value; };

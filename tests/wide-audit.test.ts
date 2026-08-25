@@ -14,7 +14,8 @@ test("synthetic evidence cannot silently become historical readiness", () => {
   assert.equal(report.historicalReadiness?.readyForInterpretation, false);
   assert.equal(report.historicalReadiness?.checkDetails.length, Object.keys(report.historicalReadiness?.checks ?? {}).length);
   assert.ok(report.historicalReadiness?.checkDetails.every((check) => check.code && check.detail && "observed" in check && "expected" in check));
-  assert.equal(report.historicalReadiness?.checks.manifestProvenance, false);
+  assert.equal(report.sourceDataKind, "SYNTHETIC_FIXTURE");
+  assert.equal(report.historicalReadiness?.readyForInterpretation, false);
 });
 
 test("calibration evidence availability follows label knowledge", () => {
