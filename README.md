@@ -97,3 +97,15 @@ npm run experiment -- --data ./bars.csv --config experiment-config.json --output
 ```
 
 Timestamps must be epoch milliseconds or ISO-8601 with `Z` or an explicit offset. Multi-symbol files must include a `symbol` column. Synthetic output is explicitly labelled and never counts as historical readiness. Use `npm run experiment:smoke` for the deterministic offline fixture.
+
+## Running your first real historical experiment
+
+1. Install with `npm ci`.
+2. Prepare a permitted CSV or normalized JSON file with `timestamp`, `open`, `high`, `low`, `close`, and `volume`; include `symbol` for multi-symbol data.
+3. Generate a skeleton with `npm run manifest:init -- --data ./bars.csv --symbols SPY --interval 60000 --timezone America/New_York --out manifest.json`.
+4. Fill and confirm `source`, `licenceNotes`, `permittedForResearch`, `adjustmentType`, `corporateActionStatus`, exchange calendar fields, and split dates. Do not treat `AUTO` or `UNKNOWN` as permission or corporate-action approval.
+5. Validate with `npm run validate-data -- --data ./bars.csv --manifest manifest.json --suggest-splits --output validation.json`.
+6. Put the confirmed manifest inside a complete experiment config, then run `npm run experiment -- --data ./bars.csv --config experiment-config.json --output ./artifacts`.
+7. Inspect `historical-readiness.json`, `decision-funnel.json`, `settlement-report.json`, and the execution artifacts before interpreting anything.
+
+The manifest fields requiring user confirmation are `source`, `licenceNotes`, `permittedForResearch`, `adjustmentType`, and `corporateActionStatus`. Equity/ETF data with `UNKNOWN` or `UNSAFE` corporate-action status is blocked. Experiments that complete but remain historically blocked use exit code `3`; usage errors use `2`, runtime failures use `1`, and synthetic smoke uses `0` while remaining explicitly non-historical.

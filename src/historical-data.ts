@@ -3,6 +3,7 @@ import type { Bar } from "./domain";
 import { parseTimestampStrict, validateBar } from "./data";
 
 export interface BarLoadOptions { intervalMs: number; symbols: readonly string[]; }
+export function parseIntervalMs(raw: string | number): number { if (typeof raw === "number") return raw; const value = raw.trim().toLowerCase(); if (/^\d+$/.test(value)) return Number(value); const match = /^(\d+)m$/.exec(value); if (match) return Number(match[1]) * 60_000; const hours = /^(\d+)h$/.exec(value); if (hours) return Number(hours[1]) * 3_600_000; throw new Error(`INVALID_INTERVAL:${raw}`); }
 
 function number(value: unknown, field: string): number {
   const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());

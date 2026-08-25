@@ -2,7 +2,7 @@ import type { FeatureVector } from "./domain";
 
 export type FeatureId = string;
 export type NamedFeatureVector = Readonly<Record<FeatureId, number>>;
-export const FEATURE_SET_VERSION = "baseline-ohlcv-v1";
+export const FEATURE_SET_VERSION = "baseline-ohlcv-v2";
 export const CANONICAL_FEATURE_IDS = ["ret1", "ret5", "emaFastDistance", "emaSlowDistance", "rsi14Normalized", "realisedVol20", "volumeZ", "spreadBps", "bookImbalance"] as const;
 export const OHLCV_FEATURE_IDS = ["ret1", "ret5", "emaFastDistance", "emaSlowDistance", "rsi14Normalized", "realisedVol20", "volumeZ"] as const;
 export const QUOTE_FEATURE_IDS = ["spreadBps", "bookImbalance"] as const;
