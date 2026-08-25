@@ -31,8 +31,8 @@ Result: the full suite and targeted adversarial replay suite pass; both TypeScri
 
 ## Remaining limitation
 
-No permitted, user-supplied historical market dataset has been provided or validated in this environment. Synthetic fixtures prove wiring and negative gates only. No first historical pipeline-validation run has been performed, and no live data, daemon, or real-money trading is enabled.
+No permitted, user-supplied historical market dataset has been provided or validated in this environment. Synthetic fixtures prove wiring and negative gates only, so no historical performance claim is made. The implementation is ready for the first permitted historical pipeline-validation run; no live data, daemon, or real-money trading is enabled.
 
 ## Verdict
 
-**NOT READY — BLOCKED BY: no user-supplied/licensed/permitted historical market dataset has been validated; no first real historical pipeline-validation run has been performed.**
+**READY FOR USER-SUPPLIED PERMITTED HISTORICAL DATA**
