@@ -13,8 +13,13 @@ import { validateDatasetIntegrity, type DatasetObservation } from "../src/ml";
 import { IntegratedPaperResearchEngine } from "../src/integrated-engine";
 import { PaperBroker } from "../src/broker";
 import { RiskManager } from "../src/risk";
+import { rsi } from "../src/features";
 
 const fitTrustedAnalogueScaler = unsafeFitTrustedAnalogueScalerRaw;
+
+test("flat RSI is neutral rather than an artificial overbought signal", () => {
+  assert.equal(rsi(Array(20).fill(100)), 50);
+});
 
 const ids = ["ret1", "ret5", "emaFastDistance", "emaSlowDistance", "rsi14Normalized", "realisedVol20", "volumeZ"] as const;
 const artifact = (targetVersion: string): ModelArtifact => ({ artifactId: `a-${targetVersion}`, modelId: "model-1", modelVersion: "1", algorithm: "logistic-regression", featureVersion: "baseline-v1", featureSetVersion: "baseline-named-v1", featureIds: ids, targetVersion, scaler: { means: ids.map(() => 0), scales: ids.map(() => 1), fittedRows: 20 }, model: { weights: ids.map(() => 0), bias: 2 }, oodProfile: { featureSetVersion: "baseline-named-v1", featureIds: ids, means: ids.map(() => 0), scales: ids.map(() => 1), minimums: ids.map(() => -10), maximums: ids.map(() => 10) }, createdAt: 1 });

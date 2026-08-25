@@ -42,7 +42,7 @@ export function rsi(values: readonly number[], period = 14): number {
     averageGain = (averageGain * (period - 1) + Math.max(change, 0)) / period;
     averageLoss = (averageLoss * (period - 1) + Math.max(-change, 0)) / period;
   }
-  if (averageLoss === 0) return 100;
+  if (averageLoss === 0) return averageGain === 0 ? 50 : 100;
   return 100 - 100 / (1 + averageGain / averageLoss);
 }
 

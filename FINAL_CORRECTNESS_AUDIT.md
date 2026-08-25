@@ -13,8 +13,10 @@ This audit covers the final implementation pass for the paper-only historical re
 - Trading-bar target resolution requires explicit schedule/calendar context.
 - Delayed execution rechecks risk after the current session mark/baseline update.
 - Settlement uses each symbol's latest trusted quote.
+- Same-timestamp replay primes all symbols' opening marks before pending risk sizing; new-session baselines are established from opening marks before completed-bar decisions.
 - Intent lifecycle identities reconcile exactly, decision-window start equity is captured before TEST fills, and annualisation is centralized.
 - Hourly resampling explicitly excludes the incomplete session-close bucket; its policy is recorded in quality metadata.
+- Synthetic provenance is derived from manifest source rather than a caller-controlled relabel, and the frozen runtime records settlement and threshold provenance.
 
 ## Verification commands
 
@@ -25,7 +27,7 @@ npm run typecheck:tests
 npm test
 ```
 
-Result: 80 tests passed, 0 failed; both TypeScript checks passed; clean dependency install reported 0 vulnerabilities.
+Result: 83 tests passed, 0 failed; both TypeScript checks passed; clean dependency install reported 0 vulnerabilities. GitHub Actions repeats the same checks in `.github/workflows/ci.yml`.
 
 ## Remaining limitation
 

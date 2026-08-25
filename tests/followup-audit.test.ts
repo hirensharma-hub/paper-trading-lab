@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { TradingCalendar } from "../src/calendar";
+import { calendarProvenanceMatches, exchangeCalendarSpec, TradingCalendar } from "../src/calendar";
 import { LogisticRegression, PlattCalibrator } from "../src/ml";
 import { approximatePeriodsPerYear, resampleEquityCurveWithQuality } from "../src/metrics";
 import { ExpectedBarClock } from "../src/bar-schedule";
@@ -40,6 +40,33 @@ test("early-close calendar is shared by session checks and bar scheduling", () =
   assert.equal(calendar.isRegularSession(close.closeMs), false);
   const schedule = new ExpectedBarClock(calendar, 60_000);
   assert.equal(calendar.sessionKey(schedule.nextBarStart(close.closeMs - 60_000)), "2026-11-30");
+});
+
+test("calendar provenance rejects a frozen runtime that drops a manifest holiday", () => {
+  const manifestCalendar = exchangeCalendarSpec({ timeZone: "America/New_York", holidays: ["2026-01-19"] });
+  assert.equal(calendarProvenanceMatches({ calendarId: manifestCalendar.calendarId, calendarSpecVersion: manifestCalendar.version, calendarSpecHash: manifestCalendar.contentHash }, manifestCalendar.config), true);
+  assert.equal(calendarProvenanceMatches({ calendarId: manifestCalendar.calendarId, calendarSpecVersion: manifestCalendar.version, calendarSpecHash: manifestCalendar.contentHash }, { timeZone: "America/New_York" }), false);
+});
+
+test("same-timestamp replay opening marks are primed for every symbol before pending risk", () => {
+  const broker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 });
+  const engine = new IntegratedPaperResearchEngine(new IntelligenceEngine(), new DecisionEngine(), broker, new RiskManager({ maxPositionValue: 10_000, maxGrossExposure: 20_000, maxDailyLoss: 10_000, maxDrawdown: 10_000, maxOrdersPerMinute: 100, feeBps: 0 }), "test", "1", new TradingCalendar({ timeZone: "UTC", sessionOpenHour: 0, sessionOpenMinute: 0, sessionCloseHour: 23, sessionCloseMinute: 59 }));
+  engine.primeOpeningMarks([
+    { bar: bar(10, 50), quote: { symbol: "SPY", ts: 60_010, bid: 49, ask: 50, last: 50 } },
+    { bar: { ...bar(10, 500), symbol: "QQQ" }, quote: { symbol: "QQQ", ts: 60_010, bid: 499, ask: 500, last: 500 } },
+  ]);
+  assert.deepEqual(engine.portfolioSnapshot(10).marks, { SPY: 50, QQQ: 500 });
+});
+
+test("new-session baseline is established from opening marks before the completed-bar close", () => {
+  const broker = new PaperBroker({ initialCash: 10_000, feeBps: 0, slippageBps: 0 });
+  broker.submit({ id: "overnight", symbol: "QQQ", side: "BUY", type: "MARKET", quantity: 10, strategyId: "test", strategyVersion: "1", reason: "seed", submittedAt: 1, status: "NEW", fills: [] });
+  broker.onQuote({ symbol: "QQQ", ts: 2, bid: 500, ask: 500, last: 500 });
+  const engine = new IntegratedPaperResearchEngine(new IntelligenceEngine(), new DecisionEngine(), broker, new RiskManager({ maxPositionValue: 10_000, maxGrossExposure: 20_000, maxDailyLoss: 1_000, maxDrawdown: 1_000, maxOrdersPerMinute: 100, feeBps: 0 }), "test", "1", new TradingCalendar({ timeZone: "UTC", sessionOpenHour: 0, sessionOpenMinute: 0, sessionCloseHour: 23, sessionCloseMinute: 59 }));
+  engine.primeOpeningMarks([{ bar: { ...bar(86_400_000, 450), symbol: "QQQ" }, quote: { symbol: "QQQ", ts: 86_460_000, bid: 449, ask: 450, last: 450 } }]);
+  const result = engine.onBar({ ...bar(86_400_000, 100), symbol: "SPY", close: 110, high: 110, low: 100 }, { symbol: "SPY", ts: 86_460_000, bid: 109, ask: 110, last: 110 });
+  assert.equal(result.snapshot.timestamp, 86_460_000);
+  assert.equal(engine.portfolioSnapshot(86_460_000).dayStartEquity, 9_500);
 });
 
 test("TEST population keeps excluded TIMEOUT and AMBIGUOUS rows for replay", () => {
@@ -123,6 +150,7 @@ test("synthetic research-policy fixture uses the research gate without synthetic
   assert.equal(report.historicalReadiness?.checks.calibrationIsolation, true);
   assert.equal(report.historicalReadiness?.checks.sourceIsHistoricalMarketData, false);
   assert.equal(report.historicalReadiness?.checks.allTestDecisionPopulationMatchesReplay, true);
+  assert.equal(report.historicalReadiness?.checks.settlementPolicyVersioned, true);
   assert.equal(report.historicalReadiness?.checks.intentLifecycleReconciles, true);
 });
 
