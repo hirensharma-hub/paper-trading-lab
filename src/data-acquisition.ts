@@ -10,6 +10,75 @@ export interface FetchLike { (input: string, init?: RequestInit): Promise<Respon
 
 const TWELVE_DATA_MAX_ROWS = 5000;
 const MIN_CHUNK_DAYS = 1;
+const TWELVE_DATA_MINUTE_MS = 60_000;
+const TWELVE_DATA_DEFAULT_REQUESTS_PER_MINUTE = 8;
+
+export interface AcquisitionClock { now(): number; sleep(milliseconds: number): Promise<void>; }
+
+const realAcquisitionClock: AcquisitionClock = { now: () => Date.now(), sleep: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)) };
+
+function configuredRequestsPerMinute(value = process.env.TWELVE_DATA_REQUESTS_PER_MINUTE): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : TWELVE_DATA_DEFAULT_REQUESTS_PER_MINUTE;
+}
+
+function safeQuotaHeader(value: string | null): number | undefined {
+  if (value === null || value.trim() === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function retryAfterMilliseconds(value: string | null, now: number): number | undefined {
+  if (value === null || value.trim() === "") return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const timestamp = Date.parse(value);
+  if (Number.isFinite(timestamp)) return Math.max(0, timestamp - now);
+  return undefined;
+}
+
+function redactProviderSecrets(value: string): string { return value.replace(/([?&](?:api|access|auth)?key=)[^&\s]+/gi, "$1[REDACTED]"); }
+
+export class TwelveDataRequestScheduler {
+  readonly requestsPerMinute: number;
+  private windowStart: number;
+  private requestCount = 0;
+  private waits = 0;
+  constructor(requestsPerMinute = configuredRequestsPerMinute(), private readonly clock: AcquisitionClock = realAcquisitionClock) {
+    this.requestsPerMinute = Number.isInteger(requestsPerMinute) && requestsPerMinute > 0 ? requestsPerMinute : TWELVE_DATA_DEFAULT_REQUESTS_PER_MINUTE;
+    this.windowStart = this.clock.now();
+  }
+  get quotaWaitEvents(): number { return this.waits; }
+  now(): number { return this.clock.now(); }
+  private resetIfWindowElapsed(now: number): void { if (now - this.windowStart >= TWELVE_DATA_MINUTE_MS) { this.windowStart = now; this.requestCount = 0; } }
+  async acquire(): Promise<void> {
+    for (;;) {
+      const now = this.clock.now();
+      this.resetIfWindowElapsed(now);
+      if (this.requestCount < this.requestsPerMinute) { this.requestCount++; return; }
+      const wait = Math.max(1, this.windowStart + TWELVE_DATA_MINUTE_MS - now);
+      this.waits++;
+      await this.clock.sleep(wait);
+    }
+  }
+  async waitForNextWindow(): Promise<void> {
+    const now = this.clock.now();
+    if (now - this.windowStart >= TWELVE_DATA_MINUTE_MS) { this.windowStart = now; this.requestCount = 0; return; }
+    const wait = Math.max(1, this.windowStart + TWELVE_DATA_MINUTE_MS - now);
+    this.waits++;
+    await this.clock.sleep(wait);
+    this.windowStart = this.clock.now();
+    this.requestCount = 0;
+  }
+  async waitForRetryAfter(milliseconds: number, requireNextWindow = false): Promise<void> {
+    if (!Number.isFinite(milliseconds) || milliseconds < 0) return this.waitForNextWindow();
+    this.waits++;
+    const windowWait = requireNextWindow ? Math.max(0, this.windowStart + TWELVE_DATA_MINUTE_MS - this.clock.now()) : 0;
+    await this.clock.sleep(Math.max(1, milliseconds, windowWait));
+    this.resetIfWindowElapsed(this.clock.now());
+  }
+  async sleepTransient(milliseconds: number): Promise<void> { await this.clock.sleep(Math.max(1, milliseconds)); }
+}
 
 export function toTwelveDataInterval(interval: HistoricalInterval): string {
   switch (interval) {
@@ -59,7 +128,7 @@ function dateOnly(timestamp: number): string { return new Date(timestamp).toISOS
 
 export class TwelveDataProvider implements HistoricalDataProvider {
   readonly providerId = "twelve-data";
-  constructor(private readonly apiKey: string | undefined = process.env.TWELVE_DATA_API_KEY, private readonly fetchImpl: FetchLike = fetch, private readonly baseUrl = "https://api.twelvedata.com/time_series") {}
+  constructor(private readonly apiKey: string | undefined = process.env.TWELVE_DATA_API_KEY, private readonly fetchImpl: FetchLike = fetch, private readonly baseUrl = "https://api.twelvedata.com/time_series", private readonly scheduler = new TwelveDataRequestScheduler()) {}
 
   async fetchBars(request: HistoricalBarsRequest): Promise<HistoricalBarsResponse> {
     if (!this.apiKey?.trim()) throw new Error("TWELVE_DATA_API_KEY_REQUIRED");
@@ -74,6 +143,9 @@ export class TwelveDataProvider implements HistoricalDataProvider {
     let duplicateCount = 0;
     let rejectedProviderRows = 0;
     let emptyChunkCount = 0;
+    let rateLimitEvents = 0;
+    let apiCreditsUsed: number | undefined;
+    let apiCreditsLeft: number | undefined;
     const rejectionReasons: string[] = [];
 
     const requestChunk = async (chunkStartMs: number, chunkEndMs: number, chunkDays: number): Promise<void> => {
@@ -84,21 +156,41 @@ export class TwelveDataProvider implements HistoricalDataProvider {
       if (request.regularSessionOnly) params.set("prepost", "false");
       let response: Response | undefined;
       let lastError: unknown;
+      let quotaRetries = 0;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
+          await this.scheduler.acquire();
           response = await this.fetchImpl(`${this.baseUrl}?${params.toString()}`);
-          if (response.ok) break;
-          if (![429, 500, 502, 503, 504].includes(response.status)) throw new Error(`TWELVE_DATA_HTTP_${response.status}`);
+          const used = safeQuotaHeader(response.headers.get("api-credits-used"));
+          const left = safeQuotaHeader(response.headers.get("api-credits-left"));
+          if (used !== undefined) apiCreditsUsed = used;
+          if (left !== undefined) apiCreditsLeft = left;
+          if (response.ok) {
+            if (left === 0) await this.scheduler.waitForNextWindow();
+            break;
+          }
+          if (response.status === 429) {
+            rateLimitEvents++;
+            quotaRetries++;
+            if (quotaRetries > 2) throw new Error("TWELVE_DATA_RATE_LIMITED");
+            const retryAfter = retryAfterMilliseconds(response.headers.get("retry-after"), this.scheduler.now());
+            if (retryAfter !== undefined) await this.scheduler.waitForRetryAfter(retryAfter, left === 0);
+            else await this.scheduler.waitForNextWindow();
+            continue;
+          }
+          if (left === 0) await this.scheduler.waitForNextWindow();
+          if (![500, 502, 503, 504].includes(response.status)) throw new Error(`TWELVE_DATA_HTTP_${response.status}`);
           lastError = new Error(`TWELVE_DATA_HTTP_${response.status}`);
         } catch (error) {
-          lastError = error;
+          lastError = error instanceof Error && /^TWELVE_DATA_HTTP_/.test(error.message) ? error : new Error("TWELVE_DATA_REQUEST_FAILED");
           if (error instanceof Error && /^TWELVE_DATA_HTTP_4(?!29)/.test(error.message)) throw error;
+          if (error instanceof Error && error.message === "TWELVE_DATA_RATE_LIMITED") throw error;
         }
-        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+        if (attempt < 2) await this.scheduler.sleepTransient(250 * (attempt + 1));
       }
       if (!response?.ok) throw lastError instanceof Error ? lastError : new Error("TWELVE_DATA_REQUEST_FAILED");
       const body = await response.json() as { status?: string; message?: string; values?: Record<string, unknown>[] };
-      if (body.status === "error" || !Array.isArray(body.values)) throw new Error(`TWELVE_DATA_RESPONSE_INVALID:${body.message ?? "values missing"}`);
+      if (body.status === "error" || !Array.isArray(body.values)) throw new Error(`TWELVE_DATA_RESPONSE_INVALID:${redactProviderSecrets(String(body.message ?? "values missing"))}`);
       const values = body.values;
       if (values.length === 0) emptyChunkCount++;
       const first = values[0]?.datetime ?? values[0]?.timestamp;
@@ -135,7 +227,7 @@ export class TwelveDataProvider implements HistoricalDataProvider {
     for (const bar of rawRows) { const key = `${bar.symbol}:${bar.startMs}`; const existing = unique.get(key); if (existing) { const identical = existing.intervalMs === bar.intervalMs && existing.open === bar.open && existing.high === bar.high && existing.low === bar.low && existing.close === bar.close && existing.volume === bar.volume; if (!identical) throw new Error("CONFLICTING_DUPLICATE_PROVIDER_BAR"); duplicateCount++; } else unique.set(key, bar); }
     const requestedEndExclusive = endMs + 86_400_000;
     const bars = [...unique.values()].filter((bar) => bar.startMs >= startMs && bar.startMs < requestedEndExclusive).sort((a, b) => a.startMs - b.startMs);
-    return { bars, provider: this.providerId, requested: request, rawResponseCount, metadata: { endpoint: "time_series", timezone: "UTC", apiInterval, providerAdjustmentParameter: "none", chunkDays: initialChunkDays, chunks, rawResponseCount, normalizedBarCount: rawRows.length, duplicateCount, rejectedProviderRows, rejectionReasons, emptyChunkCount, missingChunkPolicy: "EXPLICITLY_RECORDED_NOT_FILLED", retrievedAt: new Date().toISOString(), apiKeyPersisted: false } };
+    return { bars, provider: this.providerId, requested: request, rawResponseCount, metadata: { endpoint: "time_series", timezone: "UTC", apiInterval, providerAdjustmentParameter: "none", chunkDays: initialChunkDays, chunks, rawResponseCount, normalizedBarCount: rawRows.length, duplicateCount, rejectedProviderRows, rejectionReasons, emptyChunkCount, rateLimitEvents, quotaWaitEvents: this.scheduler.quotaWaitEvents, ...(apiCreditsUsed === undefined ? {} : { apiCreditsUsed }), ...(apiCreditsLeft === undefined ? {} : { apiCreditsLeft }), missingQuotaHeadersSupported: true, missingChunkPolicy: "EXPLICITLY_RECORDED_NOT_FILLED", retrievedAt: new Date().toISOString(), apiKeyPersisted: false } };
   }
 }
 

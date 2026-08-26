@@ -8,7 +8,7 @@ import { exchangeCalendarSpec } from "../src/calendar";
 import { runHistoricalPreflight } from "../src/historical-preflight";
 import { suggestSplits } from "../src/historical-data";
 import { ExperimentRunner, measureFeatureParity, validateManifest } from "../src/experiment";
-import { TwelveDataProvider, toTwelveDataInterval, writeAcquisitionOutput } from "../src/data-acquisition";
+import { TwelveDataProvider, TwelveDataRequestScheduler, toTwelveDataInterval, writeAcquisitionOutput, type AcquisitionClock } from "../src/data-acquisition";
 import { verifyArtifactManifest } from "../src/serialization";
 import { DecisionEngine } from "../src/decision";
 import { IntelligenceEngine } from "../src/intelligence";
@@ -20,6 +20,8 @@ import { validateMetricFrequencyAgainstSource } from "../src/metrics";
 
 const bars = Array.from({ length: 6 * 30 }, (_, index) => ({ symbol: "TEST", startMs: Math.floor(index / 30) * 86_400_000 + (index % 30) * 60_000, intervalMs: 60_000, open: 100, high: 101, low: 99, close: 100, volume: 100 }));
 const manifest = () => { const calendar = exchangeCalendarSpec({ timeZone: "UTC", sessionOpenHour: 0, sessionOpenMinute: 0, sessionCloseHour: 23, sessionCloseMinute: 59 }); return { datasetId: "test-dataset", datasetVersion: "1", origin: "SYNTHETIC_FIXTURE" as const, source: "test-fixture", licenceNotes: "synthetic", permittedForResearch: true, symbols: ["TEST"], barIntervalMs: 60_000, timezone: "UTC", startTimestamp: bars[0]!.startMs, endTimestamp: bars.at(-1)!.startMs + 60_000, adjustmentType: "RAW" as const, corporateActionStatus: "NONE_IN_RANGE" as const, expectedSession: "ALL", sessionCoveragePolicy: "PARTIAL_ALLOWED" as const, calendarId: calendar.calendarId, calendarSpecVersion: calendar.version, calendarSpecHash: calendar.contentHash, calendarHolidays: calendar.holidays, calendarEarlyCloses: calendar.earlyCloses, contentHash: canonicalDatasetHash(bars), canonicalizationVersion: "bars-canonical-json-v1" as const, createdAt: 0, dataQualitySummary: { totalRows: bars.length, acceptedRows: bars.length, rejectedRows: 0, duplicateRows: 0, invalidRows: 0, unexpectedGaps: 0, symbols: ["TEST"], issues: [] }, featureSetVersion: "baseline-ohlcv-v2", targetVersion: "triple-barrier-next-open-20-u1.5-d1-v1", labelPolicyVersion: "tb-up-vs-down-exclude-timeout-ambiguous-v1" }; };
+class FakeAcquisitionClock implements AcquisitionClock { nowMs = 0; readonly sleeps: number[] = []; now() { return this.nowMs; } async sleep(milliseconds: number) { this.sleeps.push(milliseconds); this.nowMs += milliseconds; } }
+const providerValue = (datetime = "2024-01-01 00:00:00") => ({ datetime, open: "100", high: "101", low: "99", close: "100", volume: "1" });
 
 test("metric frequency cannot be finer than source bars", () => {
   assert.doesNotThrow(() => validateMetricFrequencyAgainstSource("5m", 300_000));
@@ -34,7 +36,12 @@ test("shared historical preflight is strict and rejects spoofed origins", () => 
 test("split suggestion uses distinct session boundaries and reserves a full tail", () => { const session = (ts: number) => Math.floor(ts / 86_400_000); const tenSessions = Array.from({ length: 10 * 30 }, (_, index) => ({ ...bars[index % bars.length]!, startMs: Math.floor(index / 30) * 86_400_000 + (index % 30) * 60_000 })); const suggestion = suggestSplits(tenSessions, manifest()); assert.notEqual(session(suggestion.trainEnd - 60_000), session(suggestion.validationEnd - 60_000)); assert.notEqual(session(suggestion.validationEnd - 60_000), session(suggestion.calibrationEnd - 60_000)); assert.notEqual(session(suggestion.calibrationEnd - 60_000), session(suggestion.testDecisionEnd)); assert.equal(suggestion.outcomeTailBars, 20); assert.equal(suggestion.perSymbolOutcomeTailBars.TEST, 20); assert.ok(suggestion.testDecisionEnd < suggestion.outcomeDataEnd); });
 test("runtime reports measured feature parity and candidate stays candidate", () => { const report = new ExperimentRunner().syntheticSmoke("feature-parity-final"); assert.ok(report.featureParity); assert.ok(report.featureParity!.checkedCount > 0); assert.equal(report.featureParity!.mismatchCount, 0); assert.equal(report.modelLifecycle, "CANDIDATE"); });
 test("mock read-only acquisition normalizes duplicates, ordering, and secrets", async () => { let calls = 0; const provider = new TwelveDataProvider("secret-key", async (url) => { calls++; assert.match(url, /time_series/); return new Response(JSON.stringify({ values: [{ datetime: "2024-01-01 00:01:00", open: "101", high: "102", low: "100", close: "101", volume: "2" }, { datetime: "2024-01-01 00:00:00", open: "100", high: "101", low: "99", close: "100", volume: "1" }, { datetime: "2024-01-01 00:00:00", open: "100", high: "101", low: "99", close: "100", volume: "1" }] }), { status: 200 }); }); const response = await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-01" }); assert.equal(calls, 1); assert.equal(response.bars.length, 2); assert.ok(response.bars[0]!.startMs < response.bars[1]!.startMs); assert.equal(response.metadata.rawResponseCount, 3); assert.equal(response.metadata.normalizedBarCount, 3); assert.equal(response.metadata.duplicateCount, 1); assert.equal(response.metadata.rejectedProviderRows, 0); assert.equal(JSON.stringify(response.metadata).includes("secret-key"), false); const directory = mkdtempSync(join(tmpdir(), "paper-acquisition-")); const path = join(directory, "bars.csv"); writeAcquisitionOutput(path, response); assert.equal(readFileSync(path, "utf8").includes("secret-key"), false); rmSync(directory, { recursive: true, force: true }); });
-test("mock acquisition retries transient provider responses", async () => { let calls = 0; const provider = new TwelveDataProvider("secret-key", async () => { calls++; if (calls === 1) return new Response("busy", { status: 429 }); return new Response(JSON.stringify({ values: [{ datetime: "2024-01-01 00:00:00", open: "100", high: "101", low: "99", close: "100", volume: "1" }] }), { status: 200 }); }); const response = await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-01" }); assert.equal(calls, 2); assert.equal(response.bars.length, 1); });
+test("request scheduler never exceeds its configured minute allowance", async () => { const clock = new FakeAcquisitionClock(); const scheduler = new TwelveDataRequestScheduler(2, clock); await scheduler.acquire(); await scheduler.acquire(); await scheduler.acquire(); assert.deepEqual(clock.sleeps, [60_000]); assert.equal(scheduler.quotaWaitEvents, 1); });
+test("429 without Retry-After waits for the next quota window", async () => { let calls = 0; const clock = new FakeAcquisitionClock(); const provider = new TwelveDataProvider("secret-key", async () => { calls++; return calls === 1 ? new Response("busy", { status: 429 }) : new Response(JSON.stringify({ values: [providerValue()] }), { status: 200 }); }, undefined, new TwelveDataRequestScheduler(8, clock)); const response = await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-01" }); assert.equal(calls, 2); assert.deepEqual(clock.sleeps, [60_000]); assert.equal(response.metadata.rateLimitEvents, 1); });
+test("429 Retry-After is respected without a millisecond burst retry", async () => { let calls = 0; const clock = new FakeAcquisitionClock(); const provider = new TwelveDataProvider("secret-key", async () => { calls++; return calls === 1 ? new Response("busy", { status: 429, headers: { "Retry-After": "7" } }) : new Response(JSON.stringify({ values: [providerValue()] }), { status: 200 }); }, undefined, new TwelveDataRequestScheduler(8, clock)); await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-01" }); assert.equal(calls, 2); assert.deepEqual(clock.sleeps, [7_000]); });
+test("quota headers are parsed safely and credits-left zero gates the next request", async () => { let calls = 0; const callTimes: number[] = []; const clock = new FakeAcquisitionClock(); const scheduler = new TwelveDataRequestScheduler(8, clock); const provider = new TwelveDataProvider("secret-key", async () => { calls++; callTimes.push(clock.now()); return new Response(JSON.stringify({ values: [providerValue(`2024-01-0${calls} 00:00:00`)] }), { status: 200, headers: { "api-credits-used": String(calls + 2), "api-credits-left": calls === 1 ? "0" : "4" } }); }, undefined, scheduler); const response = await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-04" }); assert.equal(calls, 2); assert.deepEqual(callTimes, [0, 60_000]); assert.equal(response.metadata.apiCreditsUsed, 4); assert.equal(response.metadata.apiCreditsLeft, 4); assert.ok(Number(response.metadata.quotaWaitEvents) >= 1); });
+test("missing quota headers remain supported", async () => { const clock = new FakeAcquisitionClock(); const provider = new TwelveDataProvider("secret-key", async () => new Response(JSON.stringify({ values: [providerValue()] }), { status: 200 }), undefined, new TwelveDataRequestScheduler(8, clock)); const response = await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-01" }); assert.equal(response.metadata.apiCreditsUsed, undefined); assert.equal(response.metadata.apiCreditsLeft, undefined); assert.equal(response.metadata.missingQuotaHeadersSupported, true); });
+test("mock acquisition retries transient provider responses", async () => { let calls = 0; const clock = new FakeAcquisitionClock(); const provider = new TwelveDataProvider("secret-key", async () => { calls++; if (calls === 1) return new Response("busy", { status: 429 }); return new Response(JSON.stringify({ values: [providerValue()] }), { status: 200 }); }, undefined, new TwelveDataRequestScheduler(8, clock)); const response = await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-01" }); assert.equal(calls, 2); assert.equal(response.bars.length, 1); });
 test("Twelve Data interval mapping uses provider parameter semantics", () => {
   assert.equal(toTwelveDataInterval("1m"), "1min");
   assert.equal(toTwelveDataInterval("5m"), "5min");
@@ -44,16 +51,18 @@ test("Twelve Data interval mapping uses provider parameter semantics", () => {
 });
 test("Twelve Data requests contain exact mapped intervals", async () => {
   const observed: string[] = [];
+  const clock = new FakeAcquisitionClock();
   const provider = new TwelveDataProvider("secret-key", async (url) => {
     const query = new URL(url).searchParams;
     observed.push(`${query.get("interval")}:${query.get("adjust")}`);
     return new Response(JSON.stringify({ values: [{ datetime: "2024-01-01 00:00:00", open: "100", high: "101", low: "99", close: "100", volume: "1" }] }), { status: 200 });
-  });
+  }, undefined, new TwelveDataRequestScheduler(1, clock));
   for (const interval of ["1m", "5m", "15m", "1h", "1d"] as const) await provider.fetchBars({ symbol: "TEST", interval, start: "2024-01-01", end: "2024-01-01" });
   assert.deepEqual(observed, ["1min:none", "5min:none", "15min:none", "1h:none", "1day:none"]);
 });
 test("provider truncation is detected and subdivided into auditable chunks", async () => {
   let calls = 0;
+  const clock = new FakeAcquisitionClock();
   const provider = new TwelveDataProvider("secret-key", async (url) => {
     calls++;
     const query = new URL(url).searchParams;
@@ -62,14 +71,17 @@ test("provider truncation is detected and subdivided into auditable chunks", asy
       ? Array.from({ length: 5000 }, (_, index) => ({ datetime: `2024-01-${String((index % 3) + 1).padStart(2, "0")} 00:00:00`, open: "100", high: "101", low: "99", close: "100", volume: "1" }))
       : [{ datetime: `${query.get("start_date")} 00:00:00`, open: "100", high: "101", low: "99", close: "100", volume: "1" }];
     return new Response(JSON.stringify({ values }), { status: 200 });
-  });
+  }, undefined, new TwelveDataRequestScheduler(1, clock));
   const response = await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-03" });
   const chunks = response.metadata.chunks as { returnedCount: number; requestedStart: string; requestedEnd: string; subdivided: boolean }[];
   assert.ok(calls > 2);
   assert.ok(chunks.some((chunk) => chunk.returnedCount === 5000 && chunk.subdivided));
   assert.ok(chunks.every((chunk) => chunk.requestedStart && chunk.requestedEnd));
   assert.equal(response.metadata.rejectedProviderRows, 0);
+  assert.ok(clock.sleeps.length > 0);
 });
+test("transient 500 retry behavior remains functional", async () => { let calls = 0; const clock = new FakeAcquisitionClock(); const provider = new TwelveDataProvider("secret-key", async () => { calls++; return calls === 1 ? new Response("busy", { status: 500 }) : new Response(JSON.stringify({ values: [providerValue()] }), { status: 200 }); }, undefined, new TwelveDataRequestScheduler(8, clock)); const response = await provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-01" }); assert.equal(calls, 2); assert.deepEqual(clock.sleeps, [250]); assert.equal(response.bars.length, 1); });
+test("provider request failures never echo the API key", async () => { const provider = new TwelveDataProvider("secret-key", async () => { throw new Error("https://api.twelvedata.com/time_series?apikey=secret-key"); }); await assert.rejects(() => provider.fetchBars({ symbol: "TEST", interval: "1m", start: "2024-01-01", end: "2024-01-01" }), (error: unknown) => error instanceof Error && error.message === "TWELVE_DATA_REQUEST_FAILED" && !error.message.includes("secret-key")); });
 test("invalid dates and provider bars fail closed", async () => {
   const provider = new TwelveDataProvider("secret-key", async () => new Response(JSON.stringify({ values: [{ datetime: "2024-01-01 00:00:00", open: "NaN", high: "101", low: "99", close: "100", volume: "1" }] }), { status: 200 }));
   await assert.rejects(() => provider.fetchBars({ symbol: "TEST", interval: "1m", start: "not-a-date", end: "2024-01-01" }), /INVALID_HISTORICAL_DATE_RANGE/);

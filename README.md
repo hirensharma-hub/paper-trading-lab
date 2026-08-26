@@ -115,6 +115,8 @@ npm run data:download -- --provider twelve-data --symbol SPY --interval 5m --sta
 
 The downloader writes a normalized CSV and provenance sidecar, requests Twelve Data `adjust=none` explicitly, records `providerAdjustmentParameter: "none"`, never sets research permission, never connects to `PaperBroker`, and never writes the API key. Review the provider’s current licensing terms yourself before setting `licenceNotes` and `permittedForResearch`.
 
+Historical Twelve Data requests use an injectable, minute-window scheduler (default safety setting: 8 requests per minute; override with `TWELVE_DATA_REQUESTS_PER_MINUTE`). HTTP 429 responses honor `Retry-After` when present or wait for the next scheduler window, and safe numeric `api-credits-used`/`api-credits-left` values are recorded without persisting secrets. This is an acquisition safety setting, not a claim about account entitlement.
+
 ## Running your first real historical experiment
 
 1. Install with `npm ci`.
