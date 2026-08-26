@@ -78,8 +78,9 @@ export class TwelveDataProvider implements HistoricalDataProvider {
 
     const requestChunk = async (chunkStartMs: number, chunkEndMs: number, chunkDays: number): Promise<void> => {
       const requestedStart = dateOnly(chunkStartMs);
-      const requestedEnd = dateOnly(chunkEndMs);
-      const params = new URLSearchParams({ symbol: request.symbol, interval: apiInterval, start_date: requestedStart, end_date: requestedEnd, timezone: "UTC", order: "asc", format: "JSON", outputsize: String(TWELVE_DATA_MAX_ROWS), apikey: this.apiKey! });
+      const providerEndMs = chunkEndMs + 86_400_000;
+      const requestedEnd = dateOnly(providerEndMs);
+      const params = new URLSearchParams({ symbol: request.symbol, interval: apiInterval, start_date: requestedStart, end_date: requestedEnd, timezone: "UTC", order: "asc", format: "JSON", outputsize: String(TWELVE_DATA_MAX_ROWS), adjust: "none", apikey: this.apiKey! });
       if (request.regularSessionOnly) params.set("prepost", "false");
       let response: Response | undefined;
       let lastError: unknown;
@@ -132,8 +133,9 @@ export class TwelveDataProvider implements HistoricalDataProvider {
     }
     const unique = new Map<string, Bar>();
     for (const bar of rawRows) { const key = `${bar.symbol}:${bar.startMs}`; const existing = unique.get(key); if (existing) { const identical = existing.intervalMs === bar.intervalMs && existing.open === bar.open && existing.high === bar.high && existing.low === bar.low && existing.close === bar.close && existing.volume === bar.volume; if (!identical) throw new Error("CONFLICTING_DUPLICATE_PROVIDER_BAR"); duplicateCount++; } else unique.set(key, bar); }
-    const bars = [...unique.values()].sort((a, b) => a.startMs - b.startMs);
-    return { bars, provider: this.providerId, requested: request, rawResponseCount, metadata: { endpoint: "time_series", timezone: "UTC", apiInterval, chunkDays: initialChunkDays, chunks, rawResponseCount, normalizedBarCount: rawRows.length, duplicateCount, rejectedProviderRows, rejectionReasons, emptyChunkCount, missingChunkPolicy: "EXPLICITLY_RECORDED_NOT_FILLED", retrievedAt: new Date().toISOString(), apiKeyPersisted: false } };
+    const requestedEndExclusive = endMs + 86_400_000;
+    const bars = [...unique.values()].filter((bar) => bar.startMs >= startMs && bar.startMs < requestedEndExclusive).sort((a, b) => a.startMs - b.startMs);
+    return { bars, provider: this.providerId, requested: request, rawResponseCount, metadata: { endpoint: "time_series", timezone: "UTC", apiInterval, providerAdjustmentParameter: "none", chunkDays: initialChunkDays, chunks, rawResponseCount, normalizedBarCount: rawRows.length, duplicateCount, rejectedProviderRows, rejectionReasons, emptyChunkCount, missingChunkPolicy: "EXPLICITLY_RECORDED_NOT_FILLED", retrievedAt: new Date().toISOString(), apiKeyPersisted: false } };
   }
 }
 

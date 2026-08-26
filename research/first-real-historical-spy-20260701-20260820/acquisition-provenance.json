@@ -1,0 +1,17 @@
+{
+  "provider": "twelve-data",
+  "symbol": "SPY",
+  "interval": "5m",
+  "requestedStart": "2026-07-01",
+  "requestedEnd": "2026-08-20",
+  "providerInterval": "5min",
+  "providerAdjustmentParameter": "none",
+  "rawRows": 2808,
+  "normalizedRows": 2808,
+  "duplicatesRemoved": 0,
+  "rejectedProviderRows": 0,
+  "apiKeyPersisted": false,
+  "missingChunkPolicy": "EXPLICITLY_RECORDED_NOT_FILLED",
+  "calendarSource": "https://www.nyse.com/trade/hours-calendars",
+  "corporateActionSource": "https://www.ssga.com/library-content/products/fund-data/etfs/us/distribution/SPDR_Dividend_Distribution_Schedule.pdf"
+}

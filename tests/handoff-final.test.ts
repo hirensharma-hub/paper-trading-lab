@@ -35,11 +35,12 @@ test("Twelve Data interval mapping uses provider parameter semantics", () => {
 test("Twelve Data requests contain exact mapped intervals", async () => {
   const observed: string[] = [];
   const provider = new TwelveDataProvider("secret-key", async (url) => {
-    observed.push(new URL(url).searchParams.get("interval") ?? "");
+    const query = new URL(url).searchParams;
+    observed.push(`${query.get("interval")}:${query.get("adjust")}`);
     return new Response(JSON.stringify({ values: [{ datetime: "2024-01-01 00:00:00", open: "100", high: "101", low: "99", close: "100", volume: "1" }] }), { status: 200 });
   });
   for (const interval of ["1m", "5m", "15m", "1h", "1d"] as const) await provider.fetchBars({ symbol: "TEST", interval, start: "2024-01-01", end: "2024-01-01" });
-  assert.deepEqual(observed, ["1min", "5min", "15min", "1h", "1day"]);
+  assert.deepEqual(observed, ["1min:none", "5min:none", "15min:none", "1h:none", "1day:none"]);
 });
 test("provider truncation is detected and subdivided into auditable chunks", async () => {
   let calls = 0;

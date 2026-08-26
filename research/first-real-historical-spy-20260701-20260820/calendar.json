@@ -1,0 +1,16 @@
+{
+  "timeZone": "America/New_York",
+  "sessionOpenHour": 9,
+  "sessionOpenMinute": 30,
+  "sessionCloseHour": 16,
+  "sessionCloseMinute": 0,
+  "holidays": ["2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25", "2026-06-19", "2026-07-03", "2026-09-07", "2026-11-26", "2026-12-25"],
+  "earlyCloses": {"2026-11-27": 780, "2026-12-24": 780},
+  "calendarSource": "NYSE Holidays & Trading Hours, 2026 schedule; NYSE Arca Equities core session",
+  "calendarSourceUrl": "https://www.nyse.com/trade/hours-calendars",
+  "calendarId": "NYSE_ARCA_US_EQUITIES_RTH_2026",
+  "calendarSpecVersion": "nyse-arca-rth-2026-v1",
+  "generatedCalendarSpecId": "US_EQUITIES_RTH",
+  "generatedCalendarSpecVersion": "exchange-calendar-spec-v2",
+  "calendarSpecHash": "25c643845c7c2e9d49b42d33a62b8143a49c205f402d270c002d26fbb8754799"
+}

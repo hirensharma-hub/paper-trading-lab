@@ -1,0 +1,46 @@
+{
+  "experimentId": "first-real-historical-spy-20260701-20260820-v1",
+  "datasetId": "twelve-data-spy-5m-20260701-20260820-raw-v1",
+  "modelId": "logistic-ohlcv-v1",
+  "modelVersion": "1",
+  "seed": 7,
+  "trainStart": 1782912600000,
+  "trainEnd": 1785182400000,
+  "validationStart": 1785182400000,
+  "validationEnd": 1785787200000,
+  "calibrationStart": 1785787200000,
+  "calibrationEnd": 1786392000000,
+  "testStart": 1786392000000,
+  "testEnd": 1787256000000,
+  "testDecisionStart": 1786392000000,
+  "testDecisionEnd": 1787249700000,
+  "outcomeDataEnd": 1787256000000,
+  "targetVersion": "triple-barrier-next-open-20-u1.5-d1-v1",
+  "labelPolicyVersion": "tb-up-vs-down-exclude-timeout-ambiguous-v1",
+  "featureSetVersion": "baseline-ohlcv-v2",
+  "costModel": {
+    "spreadBps": 1,
+    "entrySlippageBps": 0.5,
+    "exitSlippageBps": 0.5,
+    "entryFeeBps": 0.5,
+    "exitFeeBps": 0.5
+  },
+  "initialCash": 100000,
+  "metricFrequency": "1m",
+  "gapPolicy": "REJECT_UNEXPECTED_GAP",
+  "paperOnly": true,
+  "runtimeMode": "RESEARCH_EVALUATION",
+  "executionPolicy": {
+    "version": "next-bar-open-v1",
+    "entryMethod": "NEXT_BAR_OPEN",
+    "exitMethod": "NEXT_BAR_OPEN"
+  },
+  "decisionPolicy": {
+    "minimumEvidence": "WEAK",
+    "entryProbability": 0.55
+  },
+  "exitPolicy": {
+    "version": "historical-exit-v1",
+    "maxHoldMs": 3600000
+  }
+}

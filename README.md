@@ -113,7 +113,7 @@ export TWELVE_DATA_API_KEY="your-key"
 npm run data:download -- --provider twelve-data --symbol SPY --interval 5m --start 2024-01-01 --end 2025-12-31 --out ./data/spy-5m.csv
 ```
 
-The downloader writes a normalized CSV and provenance sidecar, never sets research permission, never connects to `PaperBroker`, and never writes the API key. Review the provider’s current licensing terms yourself before setting `licenceNotes` and `permittedForResearch`.
+The downloader writes a normalized CSV and provenance sidecar, requests Twelve Data `adjust=none` explicitly, records `providerAdjustmentParameter: "none"`, never sets research permission, never connects to `PaperBroker`, and never writes the API key. Review the provider’s current licensing terms yourself before setting `licenceNotes` and `permittedForResearch`.
 
 ## Running your first real historical experiment
 

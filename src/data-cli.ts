@@ -7,7 +7,7 @@ import { runHistoricalPreflight } from "./historical-preflight";
 
 const args = process.argv.slice(2); const value = (flag: string) => { const index = args.indexOf(flag); return index >= 0 ? args[index + 1] : undefined; }; const command = args[0];
 const fail = (message: string, code = 1): never => { console.error(message); process.exit(code); };
-const data = value("--data"); const output = value("--output") ?? value("--out"); const symbols = (value("--symbols") ?? value("--symbol") ?? "").split(",").map((s) => s.trim()).filter(Boolean); const intervalMs = parseIntervalMs(value("--interval") ?? 60_000);
+const data = value("--data"); const output = value("--output") ?? value("--out"); const symbols = (value("--symbols") ?? value("--symbol") ?? "").split(",").map((s) => s.trim()).filter(Boolean); const manifestPathForLoad = value("--manifest"); const manifestForLoad = manifestPathForLoad && existsSync(manifestPathForLoad) ? JSON.parse(readFileSync(manifestPathForLoad, "utf8")) as Partial<DatasetManifest> : undefined; const intervalMs = manifestForLoad?.barIntervalMs ?? parseIntervalMs(value("--interval") ?? 60_000);
 if (!data) fail("--data FILE is required", 2);
 try {
   const calendarPath = value("--calendar"); const suppliedCalendar = calendarPath ? JSON.parse(readFileSync(calendarPath, "utf8")) as Record<string, unknown> : undefined; const bars = loadBarsFile(data!, { intervalMs, symbols });
