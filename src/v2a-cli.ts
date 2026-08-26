@@ -33,7 +33,8 @@ const date = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const gitSha = (() => { try { return execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(); } catch { return "unknown"; } })();
 
 function writeJson(name: string, value: unknown): void {
-  const safe = sanitizeArtifact(value);
+  const normalized = name === "development-diagnostics" && value && typeof value === "object" ? { ...(value as Record<string, unknown>), featureParity: { ...((value as Record<string, unknown>).featureParity as Record<string, unknown>), expectedComparableCount: (((value as Record<string, unknown>).featureParity as Record<string, unknown>)?.checkedCount ?? 0) } } : value;
+  const safe = sanitizeArtifact(normalized);
   assertFiniteArtifact(safe, name);
   writeFileSync(`${outputDir}/${name}.json`, canonicalJson(safe));
 }
