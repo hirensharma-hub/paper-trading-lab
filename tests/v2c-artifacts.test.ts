@@ -36,7 +36,7 @@ test("V2C comparable observations have exact parity and finite bounded probabili
   assert.deepEqual([parity.baseline.parityStatus, parity.candidate.parityStatus], ["PASS", "PASS"]);
   assert.deepEqual(parity.missingObservationIds, []);
   assert.deepEqual(parity.mismatchedObservationIds, []);
-  const temporal = json<{ folds: { comparableRows: number; baselineEligibleRows: number; candidateEligibleRows: number; missingBaselineObservationIds: string[]; mismatchedObservationIds: string[] }[]; aggregate: { probabilityDistributions: Record<string, { minimum: number; maximum: number }>; comparableObservationCount: number } }>(`${v2cDir}/temporal-fold-comparison.json`);
+  const temporal = json<{ folds: { comparableRows: number; baselineEligibleRows: number; candidateEligibleRows: number; missingBaselineObservationIds: string[]; mismatchedObservationIds: string[] }[]; aggregate: { probabilityDistributions: Record<string, { minimum: number; maximum: number }>; comparableObservationCount: number; baselineFoldMetrics: { logLoss: number; brier: number; rocAuc: number }[]; candidateFoldMetrics: { logLoss: number; brier: number; rocAuc: number }[]; foldMeans: { baseline: { logLoss: number; brier: number; rocAuc: number }; candidate: { logLoss: number; brier: number; rocAuc: number } } } }>(`${v2cDir}/temporal-fold-comparison.json`);
   assert.equal(temporal.folds.length, 4);
   for (const fold of temporal.folds) {
     assert.equal(fold.baselineEligibleRows, fold.comparableRows);
@@ -45,6 +45,11 @@ test("V2C comparable observations have exact parity and finite bounded probabili
     assert.deepEqual(fold.mismatchedObservationIds, []);
   }
   assert.equal(temporal.aggregate.comparableObservationCount, 8800);
+  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  for (const key of ["logLoss", "brier", "rocAuc"] as const) {
+    assert.equal(temporal.aggregate.foldMeans.baseline[key], mean(temporal.aggregate.baselineFoldMetrics.map((row) => row[key])));
+    assert.equal(temporal.aggregate.foldMeans.candidate[key], mean(temporal.aggregate.candidateFoldMetrics.map((row) => row[key])));
+  }
   for (const value of Object.values(temporal.aggregate.probabilityDistributions)) {
     assert.ok(Number.isFinite(value.minimum) && Number.isFinite(value.maximum));
     assert.ok(value.minimum >= 0 && value.maximum <= 1);
