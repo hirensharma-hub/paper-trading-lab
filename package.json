@@ -15,7 +15,8 @@
     "validate-data": "tsx src/data-cli.ts validate-data",
     "splits:suggest": "tsx src/data-cli.ts splits:suggest",
     "data:download": "tsx src/data-download-cli.ts",
-    "experiment:v2a": "tsx src/v2a-cli.ts"
+    "experiment:v2a": "tsx src/v2a-cli.ts",
+    "experiment:v2b": "tsx src/v2b-cli.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
