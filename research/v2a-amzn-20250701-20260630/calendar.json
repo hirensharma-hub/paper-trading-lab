@@ -1,0 +1,30 @@
+{
+  "timeZone": "America/New_York",
+  "sessionOpenHour": 9,
+  "sessionOpenMinute": 30,
+  "sessionCloseHour": 16,
+  "sessionCloseMinute": 0,
+  "holidays": [
+    "2025-07-04",
+    "2025-09-01",
+    "2025-11-27",
+    "2025-12-25",
+    "2026-01-01",
+    "2026-01-19",
+    "2026-02-16",
+    "2026-04-03",
+    "2026-05-25",
+    "2026-06-19"
+  ],
+  "earlyCloses": {
+    "2025-07-03": 780,
+    "2025-11-28": 780,
+    "2025-12-24": 780,
+    "2026-11-27": 780,
+    "2026-12-24": 780
+  },
+  "calendarSource": "NYSE Holidays & Trading Hours, 2025-2026 schedules",
+  "calendarSourceUrl": "https://www.nyse.com/trade/hours-calendars",
+  "calendarId": "NYSE_US_EQUITIES_RTH_2025_2026",
+  "methodology": "US_EQUITIES_RTH / exchange-calendar-spec-v2 / FULL_RTH"
+}

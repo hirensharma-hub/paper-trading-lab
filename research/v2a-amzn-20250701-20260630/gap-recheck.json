@@ -1,0 +1,11 @@
+{
+  "symbol": "AMZN",
+  "interval": "5m",
+  "requestedDate": "2026-04-15",
+  "recheckRows": 77,
+  "returnedRange": {"first": "2026-04-15T13:30:00.000Z", "last": "2026-04-15T19:55:00.000Z"},
+  "missingInterval": {"from": "2026-04-15T18:55:00.000Z", "to": "2026-04-15T19:05:00.000Z", "missingStart": "2026-04-15T19:00:00.000Z"},
+  "providerRetryAttempted": true,
+  "barFabricated": false,
+  "result": "UNRECOVERED_PROVIDER_GAP"
+}

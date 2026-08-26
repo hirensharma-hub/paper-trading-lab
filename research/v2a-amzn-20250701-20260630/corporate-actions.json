@@ -1,0 +1,20 @@
+{
+  "symbol": "AMZN",
+  "range": {"start": "2025-07-01", "end": "2026-06-30"},
+  "status": "NONE_IN_RANGE",
+  "provider": {
+    "name": "Twelve Data",
+    "dividendsEndpoint": {"httpStatus": 403, "accessAvailable": false, "eventsInRange": []},
+    "splitsEndpoint": {"httpStatus": 403, "accessAvailable": false, "eventsInRange": []}
+  },
+  "authoritativeSource": {
+    "name": "Amazon Investor Relations FAQ",
+    "url": "https://ir.aboutamazon.com/faqs/",
+    "dividends": "Amazon states it has never declared or paid cash dividends on its common stock.",
+    "splitHistory": ["1998-06-02 2-for-1", "1999-01-05 3-for-1", "1999-09-01 2-for-1", "2022-06-03 20-for-1"],
+    "eventsInRange": [],
+    "reverseSplitsInRange": []
+  },
+  "methodology": "No price-series-changing AMZN dividend, split, reverse split, or other material action was identified for the requested range; provider endpoint access limitation is recorded rather than treated as evidence.",
+  "modelResearchStarted": false
+}

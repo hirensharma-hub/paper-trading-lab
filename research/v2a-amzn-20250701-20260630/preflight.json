@@ -1,0 +1,234 @@
+{
+  "valid": false,
+  "message": "DATASET/MANIFEST PREFLIGHT FAILED",
+  "canonicalHash": "73a06e864855507504a8c5dea3d5f76bf437c2387cef642b87e017f73f157d6c",
+  "calendarHash": "26329602df266f94afe8c15450e7e71ede0b3e24327f7ca575fed5fc4e56563d",
+  "symbols": [
+    "AMZN"
+  ],
+  "rows": 19469,
+  "sessions": 251,
+  "interval": 300000,
+  "timeRange": [
+    1751376600000,
+    1782849600000
+  ],
+  "origin": "EXTERNAL_HISTORICAL_FILE",
+  "source": "Twelve Data",
+  "adjustmentStatus": "RAW",
+  "corporateActionStatus": "NONE_IN_RANGE",
+  "checks": [
+    {
+      "code": "DATASET_ORIGIN_VALID",
+      "passed": true,
+      "detail": "Origin is an explicitly supported value",
+      "expected": [
+        "EXTERNAL_HISTORICAL_FILE",
+        "SYNTHETIC_FIXTURE"
+      ],
+      "observed": "EXTERNAL_HISTORICAL_FILE"
+    },
+    {
+      "code": "SOURCE_METADATA_COMPLETE",
+      "passed": true,
+      "detail": "External source and licence notes are explicit"
+    },
+    {
+      "code": "PERMITTED_FOR_RESEARCH",
+      "passed": true,
+      "detail": "Research permission is explicit",
+      "expected": true,
+      "observed": true
+    },
+    {
+      "code": "CANONICALIZATION_VERSION_MATCH",
+      "passed": true,
+      "detail": "Canonicalization version matches runtime",
+      "expected": "bars-canonical-json-v1",
+      "observed": "bars-canonical-json-v1"
+    },
+    {
+      "code": "CANONICAL_DATA_HASH_MATCH",
+      "passed": true,
+      "detail": "Manifest hash matches canonical bars",
+      "expected": "73a06e864855507504a8c5dea3d5f76bf437c2387cef642b87e017f73f157d6c",
+      "observed": "73a06e864855507504a8c5dea3d5f76bf437c2387cef642b87e017f73f157d6c"
+    },
+    {
+      "code": "DATASET_ID_VALID",
+      "passed": true,
+      "detail": "Dataset ID is stable and non-empty",
+      "expected": "stable identifier",
+      "observed": "twelve-data-amzn-5m-20250701-20260630-raw-v1"
+    },
+    {
+      "code": "DATASET_VERSION_VALID",
+      "passed": true,
+      "detail": "Dataset version is explicit"
+    },
+    {
+      "code": "SYMBOL_UNIVERSE_MATCH",
+      "passed": true,
+      "detail": "Observed symbols equal manifest symbols",
+      "expected": [
+        "AMZN"
+      ],
+      "observed": [
+        "AMZN"
+      ]
+    },
+    {
+      "code": "INPUT_ORDER_VALID",
+      "passed": true,
+      "detail": "Input bars are chronological within each symbol"
+    },
+    {
+      "code": "NO_UNDECLARED_SYMBOLS",
+      "passed": true,
+      "detail": "No bar uses an undeclared symbol"
+    },
+    {
+      "code": "BAR_INTERVAL_MATCH",
+      "passed": true,
+      "detail": "Every bar uses the manifest interval",
+      "expected": 300000
+    },
+    {
+      "code": "TIMESTAMP_RANGE_MATCH",
+      "passed": true,
+      "detail": "Every bar is within the manifest range"
+    },
+    {
+      "code": "OHLCV_VALID",
+      "passed": true,
+      "detail": "All OHLCV rows pass validation",
+      "expected": 0,
+      "observed": 0
+    },
+    {
+      "code": "NO_DUPLICATE_BARS",
+      "passed": true,
+      "detail": "No duplicate symbol/timestamp bars",
+      "expected": 0,
+      "observed": 0
+    },
+    {
+      "code": "NO_UNEXPECTED_GAPS",
+      "passed": false,
+      "detail": "No unexpected gaps or incomplete sessions",
+      "expected": 0,
+      "observed": 2
+    },
+    {
+      "code": "SESSION_COVERAGE_VALID",
+      "passed": false,
+      "detail": "Session coverage matches manifest policy"
+    },
+    {
+      "code": "NO_OUTSIDE_SESSION_BARS",
+      "passed": true,
+      "detail": "No bar is outside the declared session"
+    },
+    {
+      "code": "NO_MISSING_REQUIRED_SESSIONS",
+      "passed": false,
+      "detail": "All required sessions and bars are present"
+    },
+    {
+      "code": "CALENDAR_ID_MATCH",
+      "passed": true,
+      "detail": "Calendar ID matches resolved calendar",
+      "expected": "US_EQUITIES_RTH",
+      "observed": "US_EQUITIES_RTH"
+    },
+    {
+      "code": "CALENDAR_VERSION_MATCH",
+      "passed": true,
+      "detail": "Calendar version matches resolved calendar",
+      "expected": "exchange-calendar-spec-v2",
+      "observed": "exchange-calendar-spec-v2"
+    },
+    {
+      "code": "CALENDAR_HASH_MATCH",
+      "passed": true,
+      "detail": "Calendar hash matches resolved calendar",
+      "expected": "26329602df266f94afe8c15450e7e71ede0b3e24327f7ca575fed5fc4e56563d",
+      "observed": "26329602df266f94afe8c15450e7e71ede0b3e24327f7ca575fed5fc4e56563d"
+    },
+    {
+      "code": "ADJUSTMENT_STATUS_CONFIRMED",
+      "passed": true,
+      "detail": "Adjustment status is user-confirmed",
+      "expected": "not UNCONFIRMED",
+      "observed": "RAW"
+    },
+    {
+      "code": "CORPORATE_ACTION_STATUS_SAFE",
+      "passed": true,
+      "detail": "Corporate-action status is safe",
+      "expected": [
+        "NONE_IN_RANGE",
+        "HANDLED"
+      ],
+      "observed": "NONE_IN_RANGE"
+    },
+    {
+      "code": "FEATURE_SET_VERSION_MATCH",
+      "passed": true,
+      "detail": "Feature set version is supported",
+      "expected": "baseline-ohlcv-v2",
+      "observed": "baseline-ohlcv-v2"
+    },
+    {
+      "code": "TARGET_VERSION_MATCH",
+      "passed": true,
+      "detail": "Target version is supported",
+      "expected": "triple-barrier-next-open-20-u1.5-d1-v1",
+      "observed": "triple-barrier-next-open-20-u1.5-d1-v1"
+    },
+    {
+      "code": "LABEL_POLICY_VERSION_MATCH",
+      "passed": true,
+      "detail": "Label policy version is supported",
+      "expected": "tb-up-vs-down-exclude-timeout-ambiguous-v1",
+      "observed": "tb-up-vs-down-exclude-timeout-ambiguous-v1"
+    },
+    {
+      "code": "DATA_QUALITY_ALL_CLEAR",
+      "passed": false,
+      "detail": "Every data-quality issue is covered and cleared",
+      "expected": 0,
+      "observed": [
+        "GAP:AMZN:1776279900000",
+        "MISSING_SESSION_BARS:AMZN:2026-04-15:1"
+      ]
+    }
+  ],
+  "blockingReasons": [
+    "NO_UNEXPECTED_GAPS",
+    "SESSION_COVERAGE_VALID",
+    "NO_MISSING_REQUIRED_SESSIONS",
+    "DATA_QUALITY_ALL_CLEAR"
+  ],
+  "suggestedSplits": {
+    "trainEnd": 1766782800000,
+    "validationEnd": 1771880400000,
+    "calibrationEnd": 1776369600000,
+    "testEnd": 1782849600000,
+    "testDecisionEnd": 1782843300000,
+    "outcomeDataEnd": 1782849600000,
+    "sessionCount": 251,
+    "trainSessions": 125,
+    "validationEndSession": 163,
+    "calibrationEndSession": 200,
+    "testEndSession": 251,
+    "outcomeTailBars": 20,
+    "perSymbolOutcomeTailBars": {
+      "AMZN": 20
+    },
+    "safeFinalDecisionTimestampBySymbol": {
+      "AMZN": 1782843300000
+    }
+  },
+  "nextStep": "npm run experiment -- --data ./data/amzn-5m-20250701-20260630.csv --manifest ./research/v2a-amzn-20250701-20260630/manifest.json --config ./experiments/first-real-historical.json --output ./runs/first-real-historical"
+}

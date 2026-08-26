@@ -1,0 +1,18 @@
+{
+  "provider": "Twelve Data",
+  "symbol": "AMZN",
+  "interval": "5m",
+  "requestedRange": {"start": "2025-07-01", "end": "2026-06-30"},
+  "returnedRange": {"first": "2025-07-01T13:30:00.000Z", "last": "2026-06-30T19:55:00.000Z"},
+  "rawRows": 19469,
+  "normalizedRows": 19469,
+  "chunks": 29,
+  "rateLimitEvents": 1,
+  "quotaWaitEvents": 4,
+  "rejectedProviderRows": 0,
+  "duplicateRows": 0,
+  "conflictingDuplicates": 0,
+  "providerAdjustmentParameter": "none",
+  "apiKeyPersisted": false,
+  "rawRowsCommitted": false
+}
