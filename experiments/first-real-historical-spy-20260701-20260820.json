@@ -26,7 +26,7 @@
     "exitFeeBps": 0.5
   },
   "initialCash": 100000,
-  "metricFrequency": "1m",
+  "metricFrequency": "5m",
   "gapPolicy": "REJECT_UNEXPECTED_GAP",
   "paperOnly": true,
   "runtimeMode": "RESEARCH_EVALUATION",

@@ -16,9 +16,19 @@ import { IntegratedPaperResearchEngine, replayIntegrated } from "../src/integrat
 import { PaperBroker } from "../src/broker";
 import { RiskManager } from "../src/risk";
 import { TradingCalendar } from "../src/calendar";
+import { validateMetricFrequencyAgainstSource } from "../src/metrics";
 
 const bars = Array.from({ length: 6 * 30 }, (_, index) => ({ symbol: "TEST", startMs: Math.floor(index / 30) * 86_400_000 + (index % 30) * 60_000, intervalMs: 60_000, open: 100, high: 101, low: 99, close: 100, volume: 100 }));
 const manifest = () => { const calendar = exchangeCalendarSpec({ timeZone: "UTC", sessionOpenHour: 0, sessionOpenMinute: 0, sessionCloseHour: 23, sessionCloseMinute: 59 }); return { datasetId: "test-dataset", datasetVersion: "1", origin: "SYNTHETIC_FIXTURE" as const, source: "test-fixture", licenceNotes: "synthetic", permittedForResearch: true, symbols: ["TEST"], barIntervalMs: 60_000, timezone: "UTC", startTimestamp: bars[0]!.startMs, endTimestamp: bars.at(-1)!.startMs + 60_000, adjustmentType: "RAW" as const, corporateActionStatus: "NONE_IN_RANGE" as const, expectedSession: "ALL", sessionCoveragePolicy: "PARTIAL_ALLOWED" as const, calendarId: calendar.calendarId, calendarSpecVersion: calendar.version, calendarSpecHash: calendar.contentHash, calendarHolidays: calendar.holidays, calendarEarlyCloses: calendar.earlyCloses, contentHash: canonicalDatasetHash(bars), canonicalizationVersion: "bars-canonical-json-v1" as const, createdAt: 0, dataQualitySummary: { totalRows: bars.length, acceptedRows: bars.length, rejectedRows: 0, duplicateRows: 0, invalidRows: 0, unexpectedGaps: 0, symbols: ["TEST"], issues: [] }, featureSetVersion: "baseline-ohlcv-v2", targetVersion: "triple-barrier-next-open-20-u1.5-d1-v1", labelPolicyVersion: "tb-up-vs-down-exclude-timeout-ambiguous-v1" }; };
+
+test("metric frequency cannot be finer than source bars", () => {
+  assert.doesNotThrow(() => validateMetricFrequencyAgainstSource("5m", 300_000));
+  assert.throws(() => validateMetricFrequencyAgainstSource("1m", 300_000), /METRIC_FREQUENCY_FINER_THAN_SOURCE_INTERVAL/);
+  assert.throws(() => validateMetricFrequencyAgainstSource("5m", 900_000), /METRIC_FREQUENCY_FINER_THAN_SOURCE_INTERVAL/);
+  assert.doesNotThrow(() => validateMetricFrequencyAgainstSource("1h", 3_600_000));
+  assert.doesNotThrow(() => validateMetricFrequencyAgainstSource("1d", 86_400_000));
+  assert.doesNotThrow(() => validateMetricFrequencyAgainstSource("15m", 300_000));
+});
 
 test("shared historical preflight is strict and rejects spoofed origins", () => { const result = runHistoricalPreflight(manifest(), bars); assert.equal(result.passed, true); assert.deepEqual(validateManifest(manifest(), bars), result.dataQuality); const invalid = runHistoricalPreflight({ ...manifest(), origin: "REAL_DATA_I_PROMISE" as never }, bars); assert.equal(invalid.passed, false); assert.ok(invalid.blockingReasons.includes("DATASET_ORIGIN_VALID")); });
 test("split suggestion uses distinct session boundaries and reserves a full tail", () => { const session = (ts: number) => Math.floor(ts / 86_400_000); const tenSessions = Array.from({ length: 10 * 30 }, (_, index) => ({ ...bars[index % bars.length]!, startMs: Math.floor(index / 30) * 86_400_000 + (index % 30) * 60_000 })); const suggestion = suggestSplits(tenSessions, manifest()); assert.notEqual(session(suggestion.trainEnd - 60_000), session(suggestion.validationEnd - 60_000)); assert.notEqual(session(suggestion.validationEnd - 60_000), session(suggestion.calibrationEnd - 60_000)); assert.notEqual(session(suggestion.calibrationEnd - 60_000), session(suggestion.testDecisionEnd)); assert.equal(suggestion.outcomeTailBars, 20); assert.equal(suggestion.perSymbolOutcomeTailBars.TEST, 20); assert.ok(suggestion.testDecisionEnd < suggestion.outcomeDataEnd); });

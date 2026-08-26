@@ -81,9 +81,13 @@ Benchmarks over the same TEST window:
 | EMA_BASELINE | 98,350.84 | -1.6492% | 22 | 217.79 | 217.79 |
 | LOGISTIC_CANDIDATE | 100,000.00 | 0.0000% | 0 | 0.00 | 0.00 |
 
-Historical readiness is `false` because the existing metric-series gate reported `metricSeriesTrusted=false` (`metricQuality=FAILED`, frequency `1m`, snapshot count 604). All other readiness gates passed, including source provenance, calendar, full-session coverage, gap checks, corporate-action safety, purge isolation, feature parity, and intent lifecycle reconciliation.
+The prior run used `metricFrequency=1m` against 5-minute source bars and correctly produced `metricSeriesTrusted=false`. The readiness-repair rerun uses the exact source frequency, `metricFrequency=5m`, and is a readiness-repair/reproducibility verification—not a new untouched TEST. It produced `metricQuality=TRUSTED`, `metricSeriesTrusted=true`, and `historicalReadiness.readyForInterpretation=true`.
+
+The TEST binary labels contain `DOWN=406` and `UP=162`; therefore the always-DOWN majority-class baseline is `406/568 = 0.714789`, equal to the candidate's TEST accuracy. The model produced no positive-class predictions: UP precision 0, recall 0, and F1 0. The accuracy is not evidence of useful predictive skill.
 
 Artifact verification: `PASS` (no path, size, or SHA-256 mismatches).
+
+The configuration guard now rejects any metric frequency finer than the source bar interval with `METRIC_FREQUENCY_FINER_THAN_SOURCE_INTERVAL`.
 
 Model lifecycle: `CANDIDATE`.
 
