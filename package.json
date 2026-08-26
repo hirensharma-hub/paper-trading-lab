@@ -17,7 +17,8 @@
     "data:download": "tsx src/data-download-cli.ts",
     "experiment:v2a": "tsx src/v2a-cli.ts",
     "experiment:v2b": "tsx src/v2b-cli.ts",
-    "experiment:v2c": "tsx src/v2c-cli.ts"
+    "experiment:v2c": "tsx src/v2c-cli.ts",
+    "experiment:v2d": "tsx src/v2d-cli.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
