@@ -1,0 +1,23 @@
+[Unit]
+Description=Paper Trading Lab Forward Paper Runtime
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=papertrading
+Group=papertrading
+WorkingDirectory=/opt/paper-trading-lab
+EnvironmentFile=/etc/paper-trading-lab/forward.env
+ExecStart=/usr/bin/node /opt/paper-trading-lab/node_modules/tsx/dist/cli.mjs src/forward-paper-service.ts
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/paper-trading-lab
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

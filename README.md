@@ -54,6 +54,20 @@ It listens only on `127.0.0.1:47821` and accepts normalized paper-market events 
 
 For an unpacked extension, configure its exact origin before starting the service: `PAPER_EXTENSION_ORIGIN=chrome-extension://<extension-id> npm run service`. Origins are never trusted merely because they use the `chrome-extension:` scheme; requests without an Origin header remain available for local CLI/test use.
 
+## Forward Paper Runtime V1 (Oracle VM)
+
+The repository includes an independent `FORWARD_PAPER` daemon for a new, dedicated Oracle VM. It is scoped to completed AMZN 5-minute regular-session bars, runs without Chrome, uses the existing Twelve Data acquisition layer, and connects only to the internal `PaperBroker`. Real-money execution, brokerage credentials, TradingView automation, and public API mutation are disabled by design.
+
+```bash
+cp .env.forward.example .env.forward
+# set FORWARD_START_TIMESTAMP, PAPER_API_TOKEN, and a permitted Twelve Data key
+npm run forward:paper
+```
+
+The daemon persists processed bar IDs, predictions, decisions, paper orders/fills/positions, pending and resolved experiences, model hashes, training/evaluation/promotion records, and runtime state under `PAPER_RUNTIME_DATA_DIR` (default `./runtime-data`). The API binds to `127.0.0.1:3001`; `/health` is safe for local liveness checks and `/api/*` requires a bearer token. There are no manual trade, risk override, or promotion-control endpoints. Run `npm run forward:smoke` for the offline restart/replay check, `npm run forward:db:verify` for ledger validation, and `npm run forward:model:verify` for champion artifact verification.
+
+See [deploy/oracle-always-free.md](deploy/oracle-always-free.md) for a fresh Oracle VM deployment. The guide is intentionally separate from any existing Lesson Lift infrastructure.
+
 ## Try the Chrome extension
 
 1. Download the repository from GitHub or clone it temporarily.

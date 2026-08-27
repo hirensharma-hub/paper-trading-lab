@@ -1,4 +1,10 @@
 node_modules/
+runtime-data/
+*.ndjson
+*.sqlite
+*.sqlite-*
+.env.forward
+*.log
 coverage/
 dist/
 .env

@@ -1,6 +1,7 @@
 import type { Fill, PaperOrder, Position, Quote } from "./domain";
 
 export interface BrokerConfig { initialCash: number; feeBps: number; slippageBps: number; entryFeeBps?: number; exitFeeBps?: number; entrySlippageBps?: number; exitSlippageBps?: number; }
+export interface PaperBrokerState { cash: number; orders: readonly PaperOrder[]; positions: readonly Position[]; fillSequence: number; realisedPnlTotal: number; feesPaidTotal: number; estimatedSlippageTotal: number; lastQuoteTs: Readonly<Record<string, number>>; }
 
 export class PaperBroker {
   private cash: number;
@@ -24,6 +25,16 @@ export class PaperBroker {
   get realisedPnl() { return this.realisedPnlTotal; }
   get feesPaid() { return this.feesPaidTotal; }
   get estimatedSlippage() { return this.estimatedSlippageTotal; }
+
+  exportState(): PaperBrokerState { return { cash: this.cash, orders: this.allOrders, positions: this.openPositions, fillSequence: this.fillSequence, realisedPnlTotal: this.realisedPnlTotal, feesPaidTotal: this.feesPaidTotal, estimatedSlippageTotal: this.estimatedSlippageTotal, lastQuoteTs: Object.fromEntries(this.lastQuoteTs) }; }
+  restoreState(state: PaperBrokerState): void {
+    if (!Number.isFinite(state.cash) || state.cash < 0) throw new Error("Invalid persisted broker cash");
+    this.cash = state.cash; this.orders.clear(); this.positions.clear(); this.lastQuoteTs.clear();
+    for (const order of state.orders) this.orders.set(order.id, structuredClone(order));
+    for (const position of state.positions) this.positions.set(position.symbol, structuredClone(position));
+    for (const [symbol, timestamp] of Object.entries(state.lastQuoteTs)) this.lastQuoteTs.set(symbol, timestamp);
+    this.fillSequence = state.fillSequence; this.realisedPnlTotal = state.realisedPnlTotal; this.feesPaidTotal = state.feesPaidTotal; this.estimatedSlippageTotal = state.estimatedSlippageTotal;
+  }
 
   submit(order: PaperOrder): void {
     if (order.quantity <= 0) throw new Error("Order quantity must be positive");

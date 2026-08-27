@@ -18,7 +18,12 @@
     "experiment:v2a": "tsx src/v2a-cli.ts",
     "experiment:v2b": "tsx src/v2b-cli.ts",
     "experiment:v2c": "tsx src/v2c-cli.ts",
-    "experiment:v2d": "tsx src/v2d-cli.ts"
+    "experiment:v2d": "tsx src/v2d-cli.ts",
+    "forward:paper": "tsx src/forward-paper-service.ts",
+    "forward:status": "tsx src/forward-admin-cli.ts status",
+    "forward:smoke": "tsx src/forward-smoke-cli.ts",
+    "forward:db:verify": "tsx src/forward-admin-cli.ts db-verify",
+    "forward:model:verify": "tsx src/forward-admin-cli.ts model-verify"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
